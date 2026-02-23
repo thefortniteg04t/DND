@@ -1,8 +1,10 @@
-<html lang="en"><head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Tavern Ledger — D&amp;D Character Forge</title>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&amp;family=Cinzel:wght@400;600&amp;family=Crimson+Text:ital,wght@0,400;0,600;1,400&amp;display=swap" rel="stylesheet">
+<title>Tavern Ledger — D&D Character Forge</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
 :root{--gold:#c9a84c;--gold2:#e8c96a;--dark:#0d0b07;--dark2:#1a1510;--dark3:#251e14;--dark4:#2e2518;--parch:#f0e6c8;--parch2:#e8d9a8;--red:#8b2020;--ink:#2a1f0a;}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -246,7 +248,7 @@ textarea{resize:vertical;min-height:80px;}
     <div class="auth-wrap">
       <div class="auth-logo">
         <span class="title">Tavern Ledger</span>
-        <span class="sub">D&amp;D Character Forge</span>
+        <span class="sub">D&D Character Forge</span>
       </div>
       <div class="auth-box">
         <div class="auth-tabs">
@@ -348,7 +350,10 @@ textarea{resize:vertical;min-height:80px;}
   <div id="section-campaigns" class="main" style="display:none">
     <div class="page-title">Campaigns</div>
     <div class="page-subtitle">Track your adventures</div>
-    <button class="btn btn-gold" onclick="openNewCampaign()" style="margin-bottom:18px">+ New Campaign</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+      <button class="btn btn-gold" onclick="openNewCampaign()">+ New Campaign</button>
+      <button class="btn btn-outline" onclick="openJoinCampaign()">&#x1F511; Join with Code</button>
+    </div>
     <div id="campaign-list"></div>
   </div>
 
@@ -361,7 +366,7 @@ textarea{resize:vertical;min-height:80px;}
       <div class="card"><div class="card-title">Actions in Combat</div><div id="actions-list"></div></div>
     </div>
     <div class="grid-2">
-      <div class="card"><div class="card-title">Cover &amp; Vision</div><div id="cover-list"></div></div>
+      <div class="card"><div class="card-title">Cover & Vision</div><div id="cover-list"></div></div>
       <div class="card"><div class="card-title">Common DCs</div><div id="dc-list"></div></div>
     </div>
     <div class="card"><div class="card-title">Damage Types</div><div id="dmg-list"></div></div>
@@ -482,45 +487,9 @@ textarea{resize:vertical;min-height:80px;}
         <button class="method-btn" onclick="setAbilityMethod('roll',this)">Roll 4d6</button>
         <button class="method-btn" onclick="setAbilityMethod('manual',this)">Manual</button>
       </div>
-      <div id="ability-method-info" class="muted" style="margin-bottom:10px;font-size:.85rem">Standard Array: assign 15, 14, 13, 12, 10, 8 — one to each ability.</div>
+      <div id="ability-method-info" class="muted" style="margin-bottom:10px;font-size:.85rem"></div>
       <div id="point-buy-remaining" style="display:none;margin-bottom:10px;font-family:'Cinzel',serif;color:var(--gold);font-size:.9rem"></div>
-      <div class="grid-6" id="ability-grid">
-    <div class="stat-box">
-      <span class="stat-label">STR</span>
-      <input type="number" class="stat-input-sm" id="ability-STR" value="15" min="1" max="30" onchange="onAbilityChange('STR')">
-      <div class="stat-mod" id="mod-STR">+2</div>
-    </div>
-  
-    <div class="stat-box">
-      <span class="stat-label">DEX</span>
-      <input type="number" class="stat-input-sm" id="ability-DEX" value="14" min="1" max="30" onchange="onAbilityChange('DEX')">
-      <div class="stat-mod" id="mod-DEX">+2</div>
-    </div>
-  
-    <div class="stat-box">
-      <span class="stat-label">CON</span>
-      <input type="number" class="stat-input-sm" id="ability-CON" value="13" min="1" max="30" onchange="onAbilityChange('CON')">
-      <div class="stat-mod" id="mod-CON">+1</div>
-    </div>
-  
-    <div class="stat-box">
-      <span class="stat-label">INT</span>
-      <input type="number" class="stat-input-sm" id="ability-INT" value="12" min="1" max="30" onchange="onAbilityChange('INT')">
-      <div class="stat-mod" id="mod-INT">+1</div>
-    </div>
-  
-    <div class="stat-box">
-      <span class="stat-label">WIS</span>
-      <input type="number" class="stat-input-sm" id="ability-WIS" value="10" min="1" max="30" onchange="onAbilityChange('WIS')">
-      <div class="stat-mod" id="mod-WIS">+0</div>
-    </div>
-  
-    <div class="stat-box">
-      <span class="stat-label">CHA</span>
-      <input type="number" class="stat-input-sm" id="ability-CHA" value="8" min="1" max="30" onchange="onAbilityChange('CHA')">
-      <div class="stat-mod" id="mod-CHA">-1</div>
-    </div>
-  </div>
+      <div class="grid-6" id="ability-grid"></div>
       <div class="section-h">Racial Ability Bonuses</div>
       <div id="racial-bonuses" class="muted">Select a race to see racial bonuses.</div>
       <div class="section-h">ASI / Feat Opportunities</div>
@@ -531,7 +500,7 @@ textarea{resize:vertical;min-height:80px;}
     <div class="tab-panel" id="creator-combat">
       <div class="grid-4" style="margin-bottom:14px">
         <div class="cs"><div class="cs-lbl">Armor Class</div><input type="number" id="c-ac" value="10" class="stat-input-sm" style="background:transparent;border:none;color:var(--parch);text-align:center;width:100%;font-size:1.5rem;font-family:'Cinzel',serif"></div>
-        <div class="cs"><div class="cs-lbl">Initiative</div><div class="cs-val" id="c-init-display">+2</div></div>
+        <div class="cs"><div class="cs-lbl">Initiative</div><div class="cs-val" id="c-init-display">+0</div></div>
         <div class="cs"><div class="cs-lbl">Speed (ft)</div><input type="number" id="c-speed" value="30" class="stat-input-sm" style="background:transparent;border:none;color:var(--parch);text-align:center;width:100%;font-size:1.5rem;font-family:'Cinzel',serif"></div>
         <div class="cs"><div class="cs-lbl">Prof Bonus</div><div class="cs-val" id="c-prof-display">+2</div></div>
       </div>
@@ -544,7 +513,7 @@ textarea{resize:vertical;min-height:80px;}
       <div class="grid-2" style="margin-top:14px">
         <div>
           <label>Hit Die Type</label>
-          <select id="c-hitdie"><option value="6">d6</option><option value="8" selected="">d8</option><option value="10">d10</option><option value="12">d12</option></select>
+          <select id="c-hitdie"><option value="6">d6</option><option value="8" selected>d8</option><option value="10">d10</option><option value="12">d12</option></select>
         </div>
         <div><label>Hit Dice Remaining</label><input type="number" id="c-hitdice-remain" value="1" min="0"></div>
       </div>
@@ -568,7 +537,7 @@ textarea{resize:vertical;min-height:80px;}
           <div style="display:flex;gap:5px" id="death-fail"></div>
         </div>
       </div>
-      <div class="section-h">Attacks &amp; Actions</div>
+      <div class="section-h">Attacks & Actions</div>
       <div id="attack-header" style="display:grid;grid-template-columns:2fr 1fr 1fr 1.5fr auto;gap:6px;padding:4px 0;margin-bottom:4px">
         <span style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold2)">Name</span>
         <span style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold2)">Bonus</span>
@@ -593,7 +562,7 @@ textarea{resize:vertical;min-height:80px;}
           <div class="section-h">Saving Throws</div>
           <div id="saving-throws-list"></div>
           <div class="section-h">Passive Scores</div>
-          <div id="passive-scores" style="font-family:'Cinzel',serif;font-size:.85rem;color:var(--gold)">Passive Perception: <strong>10</strong> &nbsp;|&nbsp; Passive Investigation: <strong>11</strong> &nbsp;|&nbsp; Passive Insight: <strong>10</strong></div>
+          <div id="passive-scores" style="font-family:'Cinzel',serif;font-size:.85rem;color:var(--gold)"></div>
         </div>
         <div>
           <div class="section-h">Skills <span style="font-size:.7rem;color:var(--parch2);font-family:'Crimson Text',serif">(check = proficient, ★ = expertise)</span></div>
@@ -602,7 +571,7 @@ textarea{resize:vertical;min-height:80px;}
       </div>
       <div class="section-h">Languages</div>
       <textarea id="c-languages" placeholder="Common, Elvish, Dwarvish..." style="min-height:50px"></textarea>
-      <div class="section-h">Tool &amp; Weapon Proficiencies</div>
+      <div class="section-h">Tool & Weapon Proficiencies</div>
       <textarea id="c-profs" placeholder="Thieves' tools, longswords, martial weapons..." style="min-height:50px"></textarea>
       <div class="section-h">Armor Proficiencies</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -662,7 +631,7 @@ textarea{resize:vertical;min-height:80px;}
           <label>Platinum (PP)</label><input type="number" id="c-pp" value="0" min="0" onchange="updateCurrency()">
           <div style="margin-top:10px;font-family:'Cinzel',serif;font-size:.82rem">
             <span class="muted">Total GP equiv: </span><span id="total-gp" class="gold">0</span><br>
-            <span class="muted">Carry Capacity: </span><span id="carry-cap" class="gold">225 lbs</span><br>
+            <span class="muted">Carry Capacity: </span><span id="carry-cap" class="gold">—</span><br>
             <span class="muted">Total Weight: </span><span id="total-weight" class="gold">0</span> lbs<br>
             <span id="encumbrance-status" style="font-style:italic;color:#55a055"></span>
           </div>
@@ -681,7 +650,7 @@ textarea{resize:vertical;min-height:80px;}
 
     <!-- FEATURES -->
     <div class="tab-panel" id="creator-features">
-      <div class="section-h">Class &amp; Race Features</div>
+      <div class="section-h">Class & Race Features</div>
       <div id="features-list"></div>
       <div class="section-h">Feats</div>
       <div id="feats-list"></div>
@@ -716,7 +685,7 @@ textarea{resize:vertical;min-height:80px;}
       </div>
       <label>Backstory</label>
       <textarea id="c-backstory" style="min-height:130px" placeholder="Tell your character's story..."></textarea>
-      <label>Allies &amp; Organizations</label>
+      <label>Allies & Organizations</label>
       <textarea id="c-allies" placeholder="Friends, enemies, factions..."></textarea>
       <label>Additional Traits / Notes</label>
       <textarea id="c-extra-traits" placeholder="Other details..."></textarea>
@@ -728,7 +697,7 @@ textarea{resize:vertical;min-height:80px;}
       <textarea id="c-notes" style="min-height:160px" placeholder="Notes from your sessions..."></textarea>
       <label>Quest Log</label>
       <textarea id="c-quests" style="min-height:100px" placeholder="Active quests, clues, goals..."></textarea>
-      <label>Treasure &amp; Loot</label>
+      <label>Treasure & Loot</label>
       <textarea id="c-treasure" placeholder="Special items, art objects, gems..."></textarea>
     </div>
 
@@ -1742,12 +1711,26 @@ function rollDeathSave(){
 // ════════════════════════════════════════
 function renderCampaignList(){
   const data=getUserData();const el=document.getElementById('campaign-list');if(!el)return;
-  if(!data.campaigns||!data.campaigns.length){el.innerHTML='<div class="muted" style="padding:20px 0">No campaigns yet. Start a new adventure!</div>';return;}
+  if(!data.campaigns||!data.campaigns.length){el.innerHTML='<div class="muted" style="padding:20px 0">No campaigns yet. Create one or join with a code!</div>';return;}
   el.innerHTML=data.campaigns.map(cp=>`
     <div class="campaign-card">
-      <div class="flex-between"><div><div class="campaign-name">${cp.name}</div><div class="muted">${cp.setting||'No setting'} · DM: ${cp.dm||'Unknown'}</div></div><div style="display:flex;gap:6px"><button class="btn btn-outline btn-sm" onclick="addJournalEntry('${cp.id}')">+ Journal</button><button class="btn btn-red btn-sm" onclick="deleteCampaign('${cp.id}')">Delete</button></div></div>
+      <div class="flex-between">
+        <div>
+          <div class="campaign-name">${cp.name} ${cp.joined?'<span class="badge badge-blue">Joined</span>':''}</div>
+          <div class="muted">${cp.setting||'No setting'} &middot; DM: ${cp.dm||'Unknown'}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${!cp.joined?`<button class="btn btn-outline btn-sm" onclick="showCampaignCode('${cp.id}')">Share Code</button>`:''}
+          <button class="btn btn-outline btn-sm" onclick="addJournalEntry('${cp.id}')">+ Journal</button>
+          <button class="btn btn-red btn-sm" onclick="deleteCampaign('${cp.id}')">Delete</button>
+        </div>
+      </div>
       ${cp.desc?`<p style="margin:10px 0 0;font-size:.9rem;color:var(--parch2)">${cp.desc}</p>`:''}
-      ${cp.journal&&cp.journal.length?`<div style="margin-top:12px"><div class="card-title">Session Journal</div>${cp.journal.map(j=>`<div class="journal-entry"><div class="journal-date">${j.date}</div><div style="font-size:.9rem">${j.text}</div></div>`).join('')}</div>`:''}
+      ${cp.journal&&cp.journal.length?`
+        <div style="margin-top:12px">
+          <div class="card-title">Session Journal</div>
+          ${cp.journal.map(j=>`<div class="journal-entry"><div class="journal-date">${j.date}</div><div style="font-size:.9rem">${j.text}</div></div>`).join('')}
+        </div>`:''}
     </div>
   `).join('');
 }
@@ -1765,11 +1748,104 @@ function openNewCampaign(){
 function saveCampaign(){
   const name=document.getElementById('new-cp-name').value.trim();if(!name)return;
   const data=getUserData();data.campaigns=data.campaigns||[];
-  data.campaigns.push({id:Date.now().toString(),name,setting:document.getElementById('new-cp-setting').value,dm:document.getElementById('new-cp-dm').value,desc:document.getElementById('new-cp-desc').value,journal:[]});
+  const id=Date.now().toString();
+  data.campaigns.push({id,name,setting:document.getElementById('new-cp-setting').value,dm:document.getElementById('new-cp-dm').value,desc:document.getElementById('new-cp-desc').value,journal:[],joined:false});
   saveUserData(data);closeModal('campaign-modal');renderCampaignList();
 }
-function deleteCampaign(id){if(!confirm('Delete this campaign?'))return;const data=getUserData();data.campaigns=data.campaigns.filter(c=>c.id!==id);saveUserData(data);renderCampaignList();}
-function addJournalEntry(id){const text=prompt('Journal entry:');if(!text)return;const data=getUserData();const cp=data.campaigns.find(c=>c.id===id);if(!cp)return;cp.journal=cp.journal||[];cp.journal.push({date:new Date().toLocaleDateString(),text});saveUserData(data);renderCampaignList();}
+function deleteCampaign(id){
+  if(!confirm('Delete this campaign?'))return;
+  const data=getUserData();data.campaigns=data.campaigns.filter(c=>c.id!==id);
+  saveUserData(data);renderCampaignList();
+}
+function addJournalEntry(id){
+  const text=prompt('Journal entry:');if(!text)return;
+  const data=getUserData();const cp=data.campaigns.find(c=>c.id===id);if(!cp)return;
+  cp.journal=cp.journal||[];cp.journal.push({date:new Date().toLocaleDateString(),text,author:currentUser});
+  saveUserData(data);renderCampaignList();
+}
+// ── CAMPAIGN CODES ──
+function campaignToCode(cp){
+  // Encode campaign as base64 JSON, strip journal for share (DM can include it)
+  const shareData={name:cp.name,setting:cp.setting,dm:cp.dm,desc:cp.desc,journal:cp.journal||[],sourceId:cp.id};
+  return btoa(unescape(encodeURIComponent(JSON.stringify(shareData))));
+}
+function codeToCampaign(code){
+  try{return JSON.parse(decodeURIComponent(escape(atob(code))));}
+  catch(e){return null;}
+}
+function showCampaignCode(id){
+  const data=getUserData();const cp=data.campaigns.find(c=>c.id===id);if(!cp)return;
+  const code=campaignToCode(cp);
+  document.getElementById('campaign-modal-title').textContent='Campaign Share Code';
+  document.getElementById('campaign-modal-body').innerHTML=`
+    <p style="color:var(--parch2);margin-bottom:14px;font-size:.92rem">Share this code with your players. They paste it into "Join with Code" to add this campaign to their account.</p>
+    <label>Share Code</label>
+    <textarea id="share-code-display" style="min-height:100px;font-family:monospace;font-size:.78rem;word-break:break-all" readonly>${code}</textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-gold" onclick="copyCode()">Copy Code</button>
+      <button class="btn btn-outline" onclick="closeModal('campaign-modal')">Close</button>
+    </div>
+    <div id="copy-confirm" class="muted" style="margin-top:8px;display:none">Copied to clipboard!</div>
+  `;
+  openModal('campaign-modal');
+}
+function copyCode(){
+  const el=document.getElementById('share-code-display');
+  navigator.clipboard.writeText(el.value).then(()=>{
+    const conf=document.getElementById('copy-confirm');
+    if(conf){conf.style.display='block';setTimeout(()=>conf.style.display='none',2000);}
+  }).catch(()=>{el.select();document.execCommand('copy');});
+}
+function openJoinCampaign(){
+  document.getElementById('campaign-modal-title').textContent='Join a Campaign';
+  document.getElementById('campaign-modal-body').innerHTML=`
+    <p style="color:var(--parch2);margin-bottom:14px;font-size:.92rem">Paste the share code your DM gave you below.</p>
+    <label>Campaign Code</label>
+    <textarea id="join-code-input" style="min-height:100px;font-family:monospace;font-size:.78rem" placeholder="Paste code here..."></textarea>
+    <div id="join-preview" style="display:none;margin:12px 0">
+      <div class="card" style="margin:0">
+        <div class="card-title">Campaign Preview</div>
+        <div id="join-preview-content"></div>
+      </div>
+    </div>
+    <div id="join-err" class="err" style="display:none">Invalid code. Make sure you copied the full code.</div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-outline" onclick="previewJoinCode()">Preview</button>
+      <button class="btn btn-gold" id="join-confirm-btn" style="display:none" onclick="confirmJoinCampaign()">Join Campaign</button>
+      <button class="btn btn-outline" onclick="closeModal('campaign-modal')">Cancel</button>
+    </div>
+  `;
+  openModal('campaign-modal');
+}
+function previewJoinCode(){
+  const code=document.getElementById('join-code-input').value.trim();
+  const cp=codeToCampaign(code);
+  const errEl=document.getElementById('join-err');
+  const previewEl=document.getElementById('join-preview');
+  const confirmBtn=document.getElementById('join-confirm-btn');
+  if(!cp){errEl.style.display='block';previewEl.style.display='none';if(confirmBtn)confirmBtn.style.display='none';return;}
+  errEl.style.display='none';
+  document.getElementById('join-preview-content').innerHTML=`
+    <p><strong style="color:var(--gold)">${cp.name}</strong></p>
+    <p class="muted">Setting: ${cp.setting||'—'} &middot; DM: ${cp.dm||'—'}</p>
+    ${cp.desc?`<p style="font-size:.9rem;margin-top:6px">${cp.desc}</p>`:''}
+    ${cp.journal&&cp.journal.length?`<p class="muted" style="margin-top:6px">${cp.journal.length} journal entries included</p>`:''}
+  `;
+  previewEl.style.display='block';
+  if(confirmBtn)confirmBtn.style.display='inline-flex';
+}
+function confirmJoinCampaign(){
+  const code=document.getElementById('join-code-input').value.trim();
+  const cp=codeToCampaign(code);if(!cp)return;
+  const data=getUserData();data.campaigns=data.campaigns||[];
+  // Check if already joined
+  if(data.campaigns.some(c=>c.sourceId===cp.sourceId||c.name===cp.name)){
+    document.getElementById('join-err').textContent='You already have this campaign!';
+    document.getElementById('join-err').style.display='block';return;
+  }
+  data.campaigns.push({id:Date.now().toString(),name:cp.name,setting:cp.setting,dm:cp.dm,desc:cp.desc,journal:cp.journal||[],joined:true,sourceId:cp.sourceId});
+  saveUserData(data);closeModal('campaign-modal');renderCampaignList();
+}
 
 // ════════════════════════════════════════
 // REFERENCE

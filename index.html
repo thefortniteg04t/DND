@@ -184,7 +184,13 @@ textarea{resize:vertical;min-height:80px;}
 .campaign-name{font-family:'Cinzel',serif;color:var(--gold);font-size:1.05rem;margin-bottom:5px;}
 .journal-entry{background:var(--dark3);border-left:3px solid var(--gold);padding:10px;margin-bottom:6px;}
 .journal-date{color:var(--gold2);font-size:.78rem;font-family:'Cinzel',serif;margin-bottom:3px;}
-
+.campaign-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px;}
+.campaign-panel{background:var(--dark3);border:1px solid rgba(201,168,76,0.2);padding:10px;}
+.campaign-panel h4{font-family:'Cinzel',serif;color:var(--gold2);font-size:.82rem;margin-bottom:6px;letter-spacing:.03em;}
+.campaign-item{display:flex;justify-content:space-between;gap:8px;font-size:.88rem;padding:5px 0;border-bottom:1px solid rgba(201,168,76,0.08);}
+.campaign-item:last-child{border-bottom:none;}
+.campaign-progress{height:7px;background:var(--dark);border:1px solid rgba(201,168,76,0.2);margin:8px 0 4px;}
+.campaign-progress-fill{height:100%;background:linear-gradient(90deg,#b18430,#e8c96a);}
 /* ── MODAL ── */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:300;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;}
 .modal-bg.open{display:flex;}
@@ -481,12 +487,12 @@ textarea{resize:vertical;min-height:80px;}
     <!-- ABILITIES -->
     <div class="tab-panel" id="creator-abilities">
       <div class="section-h">Ability Score Method</div>
-      <div style="margin-bottom:14px">
-        <button class="method-btn active" onclick="setAbilityMethod('standard',this)">Standard Array</button>
-        <button class="method-btn" onclick="setAbilityMethod('pointbuy',this)">Point Buy</button>
-        <button class="method-btn" onclick="setAbilityMethod('roll',this)">Roll 4d6</button>
-        <button class="method-btn" onclick="setAbilityMethod('manual',this)">Manual</button>
-      </div>
+      <select id="ability-method-select" style="max-width:280px;margin-bottom:14px" onchange="setAbilityMethod(this.value)">
+        <option value="standard">Standard Array</option>
+        <option value="pointbuy">Point Buy</option>
+        <option value="roll">Roll 4d6 (Drop Lowest)</option>
+        <option value="manual">Manual Entry</option>
+      </select>
       <div id="ability-method-info" class="muted" style="margin-bottom:10px;font-size:.85rem"></div>
       <div id="point-buy-remaining" style="display:none;margin-bottom:10px;font-family:'Cinzel',serif;color:var(--gold);font-size:.9rem"></div>
       <div class="grid-6" id="ability-grid"></div>
@@ -1280,7 +1286,7 @@ function buildAbilityGrid(){
       <div class="stat-mod" id="mod-${a}">${fmod(mod(STANDARD_ARRAY[i]||10))}</div>
     </div>
   `).join('');
-  setAbilityMethod('standard',document.querySelector('.method-btn'));
+  setAbilityMethod('standard');
 }
 function onAbilityChange(a){
   const score=parseInt(document.getElementById('ability-'+a)?.value)||10;
@@ -1288,10 +1294,10 @@ function onAbilityChange(a){
   updateDerivedStats();
   if(abilityMethod==='pointbuy')updatePointBuy();
 }
-function setAbilityMethod(method,btn){
+function setAbilityMethod(method){
   abilityMethod=method;
-  document.querySelectorAll('.method-btn').forEach(b=>b.classList.remove('active'));
-  if(btn)btn.classList.add('active');
+  const methodSelect=document.getElementById('ability-method-select');
+  if(methodSelect&&methodSelect.value!==method)methodSelect.value=method;
   const info=document.getElementById('ability-method-info');
   const pb2=document.getElementById('point-buy-remaining');
   const sets={standard:'Standard Array: assign 15, 14, 13, 12, 10, 8 — one to each ability.',pointbuy:'Point Buy: 27 points total. Scores range 8-15 before racial bonuses.',roll:'Rolling 4d6, dropping lowest, for each ability.',manual:'Manual Entry: type any values you choose.'};
@@ -1709,10 +1715,67 @@ function rollDeathSave(){
 // ════════════════════════════════════════
 // CAMPAIGNS
 // ════════════════════════════════════════
-function renderCampaignList(){
+function normalizeCampaign(cp={}){
+  cp.journal=Array.isArray(cp.journal)?cp.journal:[];
+  cp.quests=Array.isArray(cp.quests)?cp.quests:[];
+  cp.npcs=Array.isArray(cp.npcs)?cp.npcs:[];
+  cp.loot=Array.isArray(cp.loot)?cp.loot:[];
+  cp.sessionCount=parseInt(cp.sessionCount)||0;
+  cp.threat=cp.threat||'Medium';
+  cp.lastPlayed=cp.lastPlayed||'';
+  return cp;
+}
+function addCampaignItem(id,type){
+  const prompts={
+    quest:'New objective or quest',
+    npc:'NPC name and relevance',
+    loot:'Loot, clues, or resources gained'
+  };
+  const text=prompt(prompts[type]+':');
+  if(!text)return;
+  const data=getUserData();
+  const cp=data.campaigns.find(c=>c.id===id);
+  if(!cp)return;
+  normalizeCampaign(cp);
+  if(type==='quest')cp.quests.push({id:Date.now().toString(),text,done:false});
+  if(type==='npc')cp.npcs.push({id:Date.now().toString(),text});
+  if(type==='loot')cp.loot.push({id:Date.now().toString(),text});
+  saveUserData(data);renderCampaignList();
+}
+function toggleQuest(id,qid){
+  const data=getUserData();const cp=data.campaigns.find(c=>c.id===id);if(!cp)return;
+  normalizeCampaign(cp);
+  const q=cp.quests.find(x=>x.id===qid);if(!q)return;
+  q.done=!q.done;
+  saveUserData(data);renderCampaignList();
+}
+function removeCampaignItem(id,type,itemId){
+  const data=getUserData();const cp=data.campaigns.find(c=>c.id===id);if(!cp)return;
+  normalizeCampaign(cp);
+  cp[type]=cp[type].filter(x=>x.id!==itemId);
+  saveUserData(data);renderCampaignList();
+}
+function shiftSession(id,delta){
+  const data=getUserData();const cp=data.campaigns.find(c=>c.id===id);if(!cp)return;
+  normalizeCampaign(cp);
+  cp.sessionCount=Math.max(0,(cp.sessionCount||0)+delta);
+  cp.lastPlayed=new Date().toLocaleDateString();
+  saveUserData(data);renderCampaignList();
+}
+function setCampaignThreat(id,val){
+  const data=getUserData();const cp=data.campaigns.find(c=>c.id===id);if(!cp)return;
+  cp.threat=val;
+  saveUserData(data);renderCampaignList();
+}
+  function renderCampaignList(){
   const data=getUserData();const el=document.getElementById('campaign-list');if(!el)return;
   if(!data.campaigns||!data.campaigns.length){el.innerHTML='<div class="muted" style="padding:20px 0">No campaigns yet. Create one or join with a code!</div>';return;}
-  el.innerHTML=data.campaigns.map(cp=>`
+   el.innerHTML=data.campaigns.map(raw=>{
+    const cp=normalizeCampaign(raw);
+    const done=cp.quests.filter(q=>q.done).length;
+    const total=cp.quests.length||0;
+    const progress=total?Math.round((done/total)*100):0;
+    return `
     <div class="campaign-card">
       <div class="flex-between">
         <div>
@@ -1726,13 +1789,51 @@ function renderCampaignList(){
         </div>
       </div>
       ${cp.desc?`<p style="margin:10px 0 0;font-size:.9rem;color:var(--parch2)">${cp.desc}</p>`:''}
+            <div class="campaign-grid">
+        <div class="campaign-panel">
+          <h4>Campaign Control</h4>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-outline btn-sm" onclick="shiftSession('${cp.id}',1)">+ Session</button>
+            <button class="btn btn-outline btn-sm" onclick="shiftSession('${cp.id}',-1)">- Session</button>
+            <select style="max-width:120px;margin:0" onchange="setCampaignThreat('${cp.id}',this.value)">
+              <option value="Low" ${cp.threat==='Low'?'selected':''}>Low Threat</option>
+              <option value="Medium" ${cp.threat==='Medium'?'selected':''}>Medium Threat</option>
+              <option value="High" ${cp.threat==='High'?'selected':''}>High Threat</option>
+              <option value="Deadly" ${cp.threat==='Deadly'?'selected':''}>Deadly</option>
+            </select>
+          </div>
+          <div class="campaign-progress"><div class="campaign-progress-fill" style="width:${progress}%"></div></div>
+          <div class="muted" style="font-size:.82rem">Objective completion: ${done}/${total} (${progress}%)</div>
+        </div>
+        <div class="campaign-panel">
+          <h4>Objectives & Quests</h4>
+          <button class="btn btn-outline btn-sm" onclick="addCampaignItem('${cp.id}','quest')">+ Quest</button>
+          <div style="margin-top:6px">
+            ${cp.quests.length?cp.quests.map(q=>`<div class="campaign-item"><label style="display:flex;align-items:center;gap:6px;margin:0;color:${q.done?'#55a055':'var(--parch)'}"><input type="checkbox" ${q.done?'checked':''} onchange="toggleQuest('${cp.id}','${q.id}')" style="width:auto;margin:0"> ${q.text}</label><button class="btn btn-red btn-sm" onclick="removeCampaignItem('${cp.id}','quests','${q.id}')">x</button></div>`).join(''):'<div class="muted">No active objectives.</div>'}
+          </div>
+        </div>
+        <div class="campaign-panel">
+          <h4>NPCs & Factions</h4>
+          <button class="btn btn-outline btn-sm" onclick="addCampaignItem('${cp.id}','npc')">+ NPC</button>
+          <div style="margin-top:6px">
+            ${cp.npcs.length?cp.npcs.map(n=>`<div class="campaign-item"><span>${n.text}</span><button class="btn btn-red btn-sm" onclick="removeCampaignItem('${cp.id}','npcs','${n.id}')">x</button></div>`).join(''):'<div class="muted">No key NPCs logged.</div>'}
+          </div>
+        </div>
+        <div class="campaign-panel">
+          <h4>Treasure & Clues</h4>
+          <button class="btn btn-outline btn-sm" onclick="addCampaignItem('${cp.id}','loot')">+ Loot</button>
+          <div style="margin-top:6px">
+            ${cp.loot.length?cp.loot.map(l=>`<div class="campaign-item"><span>${l.text}</span><button class="btn btn-red btn-sm" onclick="removeCampaignItem('${cp.id}','loot','${l.id}')">x</button></div>`).join(''):'<div class="muted">No treasure tracked yet.</div>'}
+          </div>
+        </div>
+      </div>
       ${cp.journal&&cp.journal.length?`
         <div style="margin-top:12px">
           <div class="card-title">Session Journal</div>
-          ${cp.journal.map(j=>`<div class="journal-entry"><div class="journal-date">${j.date}</div><div style="font-size:.9rem">${j.text}</div></div>`).join('')}
+          ${cp.journal.slice().reverse().map(j=>`<div class="journal-entry"><div class="journal-date">${j.date}</div><div style="font-size:.9rem">${j.text}</div></div>`).join('')}
         </div>`:''}
     </div>
-  `).join('');
+  `;}).join('');
 }
 function openNewCampaign(){
   document.getElementById('campaign-modal-title').textContent='New Campaign';
@@ -1741,6 +1842,10 @@ function openNewCampaign(){
     <label>Setting / World</label><input type="text" id="new-cp-setting" placeholder="Forgotten Realms...">
     <label>DM Name</label><input type="text" id="new-cp-dm" placeholder="Your DM's name...">
     <label>Description</label><textarea id="new-cp-desc" placeholder="Brief campaign summary..."></textarea>
+    <label>Starting Threat</label>
+    <select id="new-cp-threat">
+      <option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option><option value="Deadly">Deadly</option>
+    </select>
     <div style="text-align:right;margin-top:12px"><button class="btn btn-gold" onclick="saveCampaign()">Create Campaign</button></div>
   `;
   openModal('campaign-modal');
@@ -1749,7 +1854,7 @@ function saveCampaign(){
   const name=document.getElementById('new-cp-name').value.trim();if(!name)return;
   const data=getUserData();data.campaigns=data.campaigns||[];
   const id=Date.now().toString();
-  data.campaigns.push({id,name,setting:document.getElementById('new-cp-setting').value,dm:document.getElementById('new-cp-dm').value,desc:document.getElementById('new-cp-desc').value,journal:[],joined:false});
+    data.campaigns.push({id,name,setting:document.getElementById('new-cp-setting').value,dm:document.getElementById('new-cp-dm').value,desc:document.getElementById('new-cp-desc').value,journal:[],quests:[],npcs:[],loot:[],sessionCount:0,lastPlayed:'',threat:document.getElementById('new-cp-threat').value,joined:false});
   saveUserData(data);closeModal('campaign-modal');renderCampaignList();
 }
 function deleteCampaign(id){
@@ -1765,12 +1870,11 @@ function addJournalEntry(id){
 }
 // ── CAMPAIGN CODES ──
 function campaignToCode(cp){
-  // Encode campaign as base64 JSON, strip journal for share (DM can include it)
-  const shareData={name:cp.name,setting:cp.setting,dm:cp.dm,desc:cp.desc,journal:cp.journal||[],sourceId:cp.id};
-  return btoa(unescape(encodeURIComponent(JSON.stringify(shareData))));
+  const clean=normalizeCampaign({...cp});
+  const shareData={name:clean.name,setting:clean.setting,dm:clean.dm,desc:clean.desc,journal:clean.journal||[],quests:clean.quests||[],npcs:clean.npcs||[],loot:clean.loot||[],sessionCount:clean.sessionCount||0,lastPlayed:clean.lastPlayed||'',threat:clean.threat||'Medium',sourceId:clean.id};
 }
 function codeToCampaign(code){
-  try{return JSON.parse(decodeURIComponent(escape(atob(code))));}
+  try{return normalizeCampaign(JSON.parse(decodeURIComponent(escape(atob(code)))));}
   catch(e){return null;}
 }
 function showCampaignCode(id){
@@ -1827,9 +1931,9 @@ function previewJoinCode(){
   errEl.style.display='none';
   document.getElementById('join-preview-content').innerHTML=`
     <p><strong style="color:var(--gold)">${cp.name}</strong></p>
-    <p class="muted">Setting: ${cp.setting||'—'} &middot; DM: ${cp.dm||'—'}</p>
+    <p class="muted">Setting: ${cp.setting||'—'} &middot; DM: ${cp.dm||'—'} &middot; Threat: ${cp.threat||'Medium'}</p>
     ${cp.desc?`<p style="font-size:.9rem;margin-top:6px">${cp.desc}</p>`:''}
-    ${cp.journal&&cp.journal.length?`<p class="muted" style="margin-top:6px">${cp.journal.length} journal entries included</p>`:''}
+    <p class="muted" style="margin-top:6px">${cp.quests.length} quests, ${cp.npcs.length} NPC entries, ${cp.loot.length} loot entries, ${cp.journal.length} journal notes</p>
   `;
   previewEl.style.display='block';
   if(confirmBtn)confirmBtn.style.display='inline-flex';
@@ -1843,7 +1947,7 @@ function confirmJoinCampaign(){
     document.getElementById('join-err').textContent='You already have this campaign!';
     document.getElementById('join-err').style.display='block';return;
   }
-  data.campaigns.push({id:Date.now().toString(),name:cp.name,setting:cp.setting,dm:cp.dm,desc:cp.desc,journal:cp.journal||[],joined:true,sourceId:cp.sourceId});
+  data.campaigns.push({id:Date.now().toString(),name:cp.name,setting:cp.setting,dm:cp.dm,desc:cp.desc,journal:cp.journal||[],quests:cp.quests||[],npcs:cp.npcs||[],loot:cp.loot||[],sessionCount:cp.sessionCount||0,lastPlayed:cp.lastPlayed||'',threat:cp.threat||'Medium',joined:true,sourceId:cp.sourceId});
   saveUserData(data);closeModal('campaign-modal');renderCampaignList();
 }
 

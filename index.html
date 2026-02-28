@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Tavern Ledger — D&D Character Forge</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
 <style>
 /* =============================================================================
    CSS VARIABLES & RESET
@@ -675,7 +676,7 @@ textarea { resize: vertical; min-height: 80px; }
 <!-- ============================================================
      SPELL LOOKUP MODAL
 ============================================================ -->
-<div class="modal-bg" id="spell-lookup-modal">
+<div class="modal-bg" id="spell-lookup-modal" style="z-index:400">
   <div class="modal" style="max-width:780px">
     <div class="modal-title">📖 Spell Lookup</div>
     <button class="modal-close" onclick="closeModal('spell-lookup-modal')">✕</button>
@@ -705,7 +706,7 @@ textarea { resize: vertical; min-height: 80px; }
 <!-- ============================================================
      EQUIPMENT SHOP MODAL
 ============================================================ -->
-<div class="modal-bg" id="shop-modal">
+<div class="modal-bg" id="shop-modal" style="z-index:400">
   <div class="modal" style="max-width:700px">
     <div class="modal-title">⚔ Equipment Shop</div>
     <button class="modal-close" onclick="closeModal('shop-modal')">✕</button>
@@ -1163,6 +1164,8 @@ textarea { resize: vertical; min-height: 80px; }
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
 /* =============================================================================
    STATIC DATA — ABILITIES & SKILLS
@@ -2003,12 +2006,23 @@ function generateShortCode() {
 
 /** Store a campaign under a short code in localStorage (acts as shared registry on same browser/device) */
 function storeCampaignCode(code, data) {
+  // Always cache locally first
   const codes = JSON.parse(localStorage.getItem('tl_codes') || '{}');
   codes[code] = data;
   localStorage.setItem('tl_codes', JSON.stringify(codes));
+  // Push to Firebase if available
+  if (!db) return;
+  db.ref('campaignCodes/' + code.toUpperCase()).set(data).catch(e => {
+    console.warn('storeCampaignCode Firebase error:', e);
+  });
 }
 
-function lookupCampaignCode(code) {
+async function lookupCampaignCode(code) {
+  if (db) try {
+    const snap = await db.ref('campaignCodes/' + code.toUpperCase()).get();
+    if (snap.exists()) return snap.val();
+  } catch(e) {}
+  // Fallback to localStorage
   const codes = JSON.parse(localStorage.getItem('tl_codes') || '{}');
   return codes[code.toUpperCase()] || null;
 }
@@ -2041,10 +2055,104 @@ let rollHistory    = [];
    Passwords are hashed with btoa (basic obfuscation) — not cryptographically
    secure. For production, use bcrypt on a server.
 ============================================================================= */
-const getUsers    = () => JSON.parse(localStorage.getItem('tl_users') || '{}');
-const saveUsers   = u  => localStorage.setItem('tl_users', JSON.stringify(u));
-const getUserData = () => JSON.parse(localStorage.getItem('tl_data_' + currentUser) || '{"characters":[],"campaigns":[]}');
-const saveUserData= d  => localStorage.setItem('tl_data_' + currentUser, JSON.stringify(d));
+/* =============================================================================
+   FIREBASE SETUP & DATA LAYER
+============================================================================= */
+const firebaseConfig = {
+  apiKey:            "AIzaSyBWPnAIniTrfIsNvP6j11k_7fo2bonFx80",
+  authDomain:        "tavern-ledger-f1400.firebaseapp.com",
+  databaseURL:       "https://tavern-ledger-f1400-default-rtdb.firebaseio.com",
+  projectId:         "tavern-ledger-f1400",
+  storageBucket:     "tavern-ledger-f1400.firebasestorage.app",
+  messagingSenderId: "258079250116",
+  appId:             "1:258079250116:web:c2a8019ced38bd852bdb91"
+};
+// Firebase initializes after SDKs load
+let db = null;
+function initFirebase() {
+  try {
+    if (typeof firebase === 'undefined') throw new Error('Firebase SDK not loaded');
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+  } catch(e) {
+    console.warn('Firebase unavailable, falling back to localStorage:', e.message);
+  }
+}
+
+// ── User auth (stored in Firebase /users/) ──────────────────────────────────
+async function getUsers() {
+  if (!db) return JSON.parse(localStorage.getItem('tl_users') || '{}');
+  try {
+    const snap = await db.ref('users').get();
+    return snap.exists() ? snap.val() : {};
+  } catch(e) {
+    return JSON.parse(localStorage.getItem('tl_users') || '{}');
+  }
+}
+async function saveUsers(u) {
+  localStorage.setItem('tl_users', JSON.stringify(u)); // always cache first
+  if (!db) return;
+  try { await db.ref('users').set(u); }
+  catch(e) { console.warn('saveUsers Firebase error:', e); }
+}
+
+// ── Per-user character + campaign data ─────────────────────────────────────
+function getUserData() {
+  // Return local cache immediately (Firebase updates it in background)
+  return JSON.parse(localStorage.getItem('tl_data_' + currentUser) || '{"characters":[],"campaigns":[]}');
+}
+async function saveUserData(d) {
+  localStorage.setItem('tl_data_' + currentUser, JSON.stringify(d));
+  if (!db) return;
+  try {
+    const safe = JSON.parse(JSON.stringify(d));
+    await db.ref('userData/' + sanitizeKey(currentUser)).set(safe);
+  } catch(e) { console.warn('Firebase save failed, using localStorage:', e); }
+}
+
+// ── Listen for live updates from Firebase → sync to localStorage ────────────
+function startFirebaseSync() {
+  if (!currentUser || !db) return;
+  const key = sanitizeKey(currentUser);
+  db.ref('userData/' + key).on('value', snap => {
+    if (snap.exists()) {
+      const remote = snap.val();
+      localStorage.setItem('tl_data_' + currentUser, JSON.stringify(remote));
+    }
+  });
+}
+
+// ── Sanitize username for Firebase key (no . # $ [ ]) ──────────────────────
+function sanitizeKey(str) {
+  return (str || 'guest').replace(/[.#$\[\]]/g, '_');
+}
+
+// ── Load user data from Firebase on login (merge with local) ───────────────
+async function loadUserDataFromFirebase() {
+  if (!db) return;
+  const key = sanitizeKey(currentUser);
+  try {
+    const snap = await db.ref('userData/' + key).get();
+    if (snap.exists()) {
+      const remote = snap.val();
+      // Merge: prefer remote, but keep any local chars not yet synced
+      const local  = JSON.parse(localStorage.getItem('tl_data_' + currentUser) || '{"characters":[],"campaigns":[]}');
+      const remoteIds = new Set((remote.characters||[]).map(c=>c.id));
+      const localOnly = (local.characters||[]).filter(c => !remoteIds.has(c.id));
+      if (localOnly.length) {
+        remote.characters = [...(remote.characters||[]), ...localOnly];
+        await db.ref('userData/' + key).set(remote);
+      }
+      localStorage.setItem('tl_data_' + currentUser, JSON.stringify(remote));
+    } else {
+      // First login on this device — push any existing local data up
+      const local = getUserData();
+      if (local.characters?.length || local.campaigns?.length) {
+        await db.ref('userData/' + key).set(local);
+      }
+    }
+  } catch(e) { console.warn('Could not load from Firebase:', e); }
+}
 
 /* =============================================================================
    AUTH FUNCTIONS
@@ -2056,28 +2164,35 @@ function switchAuthTab(t, btn) {
   document.getElementById('auth-register').style.display = t === 'register' ? 'block' : 'none';
 }
 
-function doLogin() {
+async function doLogin() {
   const u   = document.getElementById('login-user').value.trim();
   const p   = document.getElementById('login-pass').value;
   const err = document.getElementById('login-err');
   if (!u || !p) { showErr(err, 'Please fill in all fields.'); return; }
+  showErr(err, 'Signing in…'); err.style.color = 'var(--gold2)';
   try {
-    const users = getUsers();
-    if (!users[u] || users[u].pass !== btoa(p)) { showErr(err, 'Invalid username or password.'); return; }
-    err.style.display = 'none';
+    const users = await getUsers();
+    if (!users[u] || users[u].pass !== btoa(p)) {
+      showErr(err, 'Invalid username or password.'); err.style.color = '';
+      return;
+    }
+    err.style.display = 'none'; err.style.color = '';
     currentUser = u;
+    await loadUserDataFromFirebase();
+    startFirebaseSync();
     transitionToApp();
   } catch(e) {
-    showErr(err, 'Login error: ' + e.message);
+    showErr(err, 'Login error: ' + e.message); err.style.color = '';
   }
 }
 
 function doGuest() {
   currentUser = 'Guest';
+  startFirebaseSync();
   transitionToApp();
 }
 
-function doRegister() {
+async function doRegister() {
   const u   = document.getElementById('reg-user').value.trim();
   const p   = document.getElementById('reg-pass').value;
   const p2  = document.getElementById('reg-pass2').value;
@@ -2085,16 +2200,19 @@ function doRegister() {
   if (!u || u.length < 3)    { showErr(err, 'Username must be 3+ characters.'); return; }
   if (p.length < 6)          { showErr(err, 'Password must be 6+ characters.'); return; }
   if (p !== p2)              { showErr(err, 'Passwords do not match.'); return; }
+  showErr(err, 'Creating account…'); err.style.color = 'var(--gold2)';
   try {
-    const users = getUsers();
-    if (users[u])              { showErr(err, 'Username already taken.'); return; }
+    const users = await getUsers();
+    if (users[u]) { showErr(err, 'Username already taken.'); err.style.color = ''; return; }
     users[u] = { pass: btoa(p), email: document.getElementById('reg-email').value };
-    saveUsers(users);
+    await saveUsers(users);
     currentUser = u;
-    err.style.display = 'none';
+    await loadUserDataFromFirebase();
+    startFirebaseSync();
+    err.style.display = 'none'; err.style.color = '';
     transitionToApp();
   } catch(e) {
-    showErr(err, 'Registration error: ' + e.message);
+    showErr(err, 'Registration error: ' + e.message); err.style.color = '';
   }
 }
 
@@ -2176,7 +2294,9 @@ function renderCharList() {
     el.innerHTML = '<div class="muted" style="padding:20px 0">No characters yet. Create your first adventurer!</div>';
     return;
   }
-  el.innerHTML = data.characters.map(c => `
+  el.innerHTML = data.characters.map(c => {
+    const linkedCamp = (data.campaigns||[]).find(cp => cp.id === c.campaignId);
+    return `
     <div class="char-card">
       <div style="display:flex;gap:12px;align-items:flex-start">
         ${c.portrait ? `<img src="${c.portrait}" style="width:56px;height:70px;object-fit:cover;border:1px solid rgba(201,168,76,.4);flex-shrink:0" onerror="this.style.display='none'">` : ''}
@@ -2187,11 +2307,12 @@ function renderCharList() {
             ${(c.mcClasses && c.mcClasses.length) ? ' / ' + c.mcClasses.map(m => m.level + ' ' + m.cls + (m.sub ? ' ('+m.sub+')' : '')).join(' / ') : ''}
           </div>
           <div class="char-info">${c.background || 'No Background'} · ${c.alignment || 'Unaligned'}</div>
+          ${linkedCamp ? `<div style="font-size:.75rem;color:var(--gold2);margin-top:2px">⚔ ${linkedCamp.name}</div>` : ''}
           ${renderXPBar(c)}
           <div class="tags">
-            ${c.background       ? `<span class="badge badge-gold">${c.background}</span>` : ''}
-            ${c.inspiration      ? `<span class="badge badge-gold">★ Inspired</span>`      : ''}
-            ${c.exhaustion > 0   ? `<span class="badge badge-red">Exhausted ${c.exhaustion}</span>` : ''}
+            ${c.background     ? `<span class="badge badge-gold">${c.background}</span>` : ''}
+            ${c.inspiration    ? `<span class="badge badge-gold">★ Inspired</span>`      : ''}
+            ${c.exhaustion > 0 ? `<span class="badge badge-red">Exhausted ${c.exhaustion}</span>` : ''}
             <span class="badge badge-green">${c.curhp || 0}/${c.maxhp || 0} HP</span>
           </div>
         </div>
@@ -2199,10 +2320,35 @@ function renderCharList() {
       <div class="char-actions">
         <button class="btn btn-outline btn-sm" onclick="viewCharacter('${c.id}')">View Sheet</button>
         <button class="btn btn-outline btn-sm" onclick="editCharacter('${c.id}')">Edit</button>
+        <button class="btn btn-outline btn-sm" onclick="linkCharToCampaign('${c.id}')">⚔ Campaign</button>
         <button class="btn btn-red btn-sm"     onclick="deleteCharacter('${c.id}')">Delete</button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+}
+
+async function linkCharToCampaign(charId) {
+  const data = getUserData();
+  const char = data.characters.find(c => c.id === charId);
+  if (!char) return;
+  const camps = data.campaigns || [];
+  if (!camps.length) { alert('You have no campaigns. Join or create one first.'); return; }
+  const opts = camps.map((cp, i) => `${i+1}. ${cp.name}${cp.joined?' [Joined]':''}`).join('\n');
+  const choice = prompt(`Link "${char.name}" to a campaign:\n\n${opts}\n\nEnter number (or 0 to unlink):`);
+  if (choice === null) return;
+  const idx = parseInt(choice) - 1;
+  if (choice === '0') {
+    char.campaignId = null;
+    await saveUserData(data);
+    renderCharList();
+    showSyncToast('Character unlinked from campaign');
+    return;
+  }
+  if (idx < 0 || idx >= camps.length) return;
+  char.campaignId = camps[idx].id;
+  await saveUserData(data);
+  renderCharList();
+  showSyncToast(`Linked to "${camps[idx].name}" ☁`);
 }
 
 function deleteCharacter(id) {
@@ -3694,7 +3840,7 @@ function openNewCampaign() {
   openModal('campaign-modal');
 }
 
-function saveCampaign() {
+async function saveCampaign() {
   const name = document.getElementById('new-cp-name').value.trim();
   if (!name) return;
   const data = getUserData();
@@ -3801,108 +3947,52 @@ function openJoinCampaign() {
   openModal('campaign-modal');
 }
 
-function previewJoinCode() {
+async function previewJoinCode() {
   const code = document.getElementById('join-code-input').value.trim().toUpperCase();
-  const cp   = lookupCampaignCode(code);
-  const errEl     = document.getElementById('join-err');
-  const previewEl = document.getElementById('join-preview');
-  const confirmBtn= document.getElementById('join-confirm-btn');
-  if (!cp) { errEl.style.display = 'block'; previewEl.style.display = 'none'; if (confirmBtn) confirmBtn.style.display = 'none'; return; }
+  const errEl      = document.getElementById('join-err');
+  const previewEl  = document.getElementById('join-preview');
+  const confirmBtn = document.getElementById('join-confirm-btn');
   errEl.style.display = 'none';
-  document.getElementById('join-preview-content').innerHTML = `
-    <p><strong style="color:var(--gold)">${cp.name}</strong></p>
-    <p class="muted">Setting: ${cp.setting || '—'} · DM: ${cp.dm || '—'}</p>
-    ${cp.desc ? `<p style="font-size:.9rem;margin-top:6px">${cp.desc}</p>` : ''}
-    ${cp.journal && cp.journal.length ? `<p class="muted" style="margin-top:6px">${cp.journal.length} journal entries included</p>` : ''}`;
+  previewEl.style.display = 'none';
+  if (!code) return;
   previewEl.style.display = 'block';
-  if (confirmBtn) confirmBtn.style.display = 'inline-flex';
+  previewEl.innerHTML = '<span class="muted">Looking up code...</span>';
+  const cp = await lookupCampaignCode(code);
+  if (!cp) {
+    errEl.style.display = 'block';
+    previewEl.style.display = 'none';
+    if (confirmBtn) confirmBtn.style.display = 'none';
+    return;
+  }
+  previewEl.innerHTML = `<div style="background:var(--dark3);padding:10px;border:1px solid rgba(201,168,76,.3)">
+    <div style="font-family:'Cinzel',serif;color:var(--gold)">${cp.name}</div>
+    <div class="muted">${cp.setting||'No setting'} · DM: ${cp.dm||'Unknown'}</div>
+    ${cp.desc?`<div style="font-size:.88rem;margin-top:4px">${cp.desc}</div>`:''}
+  </div>`;
+  if (confirmBtn) confirmBtn.style.display = 'inline-block';
 }
 
-function confirmJoinCampaign() {
+
+async function confirmJoinCampaign() {
   const code = document.getElementById('join-code-input').value.trim().toUpperCase();
-  const cp   = lookupCampaignCode(code);
+  const cp   = await lookupCampaignCode(code);
   if (!cp) return;
   const data = getUserData();
   data.campaigns = data.campaigns || [];
   if (data.campaigns.some(c => c.sourceId === cp.sourceId || c.name === cp.name)) {
-    document.getElementById('join-err').textContent = 'You already have this campaign!';
+    document.getElementById('join-err').textContent = 'You already joined this campaign.';
     document.getElementById('join-err').style.display = 'block';
     return;
   }
-  data.campaigns.push({ id: Date.now().toString(), name: cp.name, setting: cp.setting, dm: cp.dm, desc: cp.desc, journal: cp.journal || [], joined: true, sourceId: cp.sourceId });
-  saveUserData(data);
-  closeModal('campaign-modal');
+  data.campaigns.push({ ...cp, joined: true, journal:[], quests:[], loot:[], recaps:[] });
+  await saveUserData(data);
   renderCampaignList();
+  closeModal('join-campaign-modal');
 }
 
-/* =============================================================================
-   REFERENCE BUILDER
-============================================================================= */
-
-/* =============================================================================
-   STATIC DATA — WEAPONS & ARMOR TABLES
-============================================================================= */
-const WEAPONS_TABLE = [
-  // Simple Melee
-  {n:'Club',          d:'1d4 bludgeoning · Light, Simple'},
-  {n:'Dagger',        d:'1d4 piercing · Finesse, light, thrown (20/60) · Simple'},
-  {n:'Greatclub',     d:'1d8 bludgeoning · Two-handed · Simple'},
-  {n:'Handaxe',       d:'1d6 slashing · Light, thrown (20/60) · Simple'},
-  {n:'Javelin',       d:'1d6 piercing · Thrown (30/120) · Simple'},
-  {n:'Light Hammer',  d:'1d4 bludgeoning · Light, thrown (20/60) · Simple'},
-  {n:'Mace',          d:'1d6 bludgeoning · Simple'},
-  {n:'Quarterstaff',  d:'1d6 (1d8 two-handed) bludgeoning · Versatile · Simple'},
-  {n:'Spear',         d:'1d6 (1d8) piercing · Thrown (20/60), versatile · Simple'},
-  {n:'Unarmed Strike',d:'1 + STR modifier bludgeoning'},
-  // Simple Ranged
-  {n:'Light Crossbow',d:'1d8 piercing · Range 80/320, loading, two-handed · Simple'},
-  {n:'Shortbow',      d:'1d6 piercing · Range 80/320, two-handed · Simple'},
-  {n:'Sling',         d:'1d4 bludgeoning · Range 30/120 · Simple'},
-  // Martial Melee
-  {n:'Battleaxe',     d:'1d8 (1d10) slashing · Versatile · Martial'},
-  {n:'Flail',         d:'1d8 bludgeoning · Martial'},
-  {n:'Glaive',        d:'1d10 slashing · Heavy, reach, two-handed · Martial'},
-  {n:'Greataxe',      d:'1d12 slashing · Heavy, two-handed · Martial'},
-  {n:'Greatsword',    d:'2d6 slashing · Heavy, two-handed · Martial'},
-  {n:'Halberd',       d:'1d10 slashing · Heavy, reach, two-handed · Martial'},
-  {n:'Lance',         d:'1d12 piercing · Reach (disadv within 5ft) · Martial'},
-  {n:'Longsword',     d:'1d8 (1d10) slashing · Versatile · Martial'},
-  {n:'Maul',          d:'2d6 bludgeoning · Heavy, two-handed · Martial'},
-  {n:'Morningstar',   d:'1d8 piercing · Martial'},
-  {n:'Pike',          d:'1d10 piercing · Heavy, reach, two-handed · Martial'},
-  {n:'Rapier',        d:'1d8 piercing · Finesse · Martial'},
-  {n:'Scimitar',      d:'1d6 slashing · Finesse, light · Martial'},
-  {n:'Shortsword',    d:'1d6 piercing · Finesse, light · Martial'},
-  {n:'Trident',       d:'1d6 (1d8) piercing · Thrown (20/60), versatile · Martial'},
-  {n:'War Pick',      d:'1d8 piercing · Martial'},
-  {n:'Warhammer',     d:'1d8 (1d10) bludgeoning · Versatile · Martial'},
-  {n:'Whip',          d:'1d4 slashing · Finesse, reach · Martial'},
-  // Martial Ranged
-  {n:'Hand Crossbow', d:'1d6 piercing · Range 30/120, light, loading · Martial'},
-  {n:'Heavy Crossbow',d:'1d10 piercing · Range 100/400, heavy, loading, two-handed · Martial'},
-  {n:'Longbow',       d:'1d8 piercing · Range 150/600, heavy, two-handed · Martial'},
-];
-
-const ARMOR_TABLE = [
-  {n:'Padded',       d:'AC 11 + DEX · Light · Stealth disadvantage'},
-  {n:'Leather',      d:'AC 11 + DEX · Light'},
-  {n:'Studded Leather',d:'AC 12 + DEX · Light'},
-  {n:'Hide',         d:'AC 12 + DEX (max 2) · Medium'},
-  {n:'Chain Shirt',  d:'AC 13 + DEX (max 2) · Medium'},
-  {n:'Scale Mail',   d:'AC 14 + DEX (max 2) · Medium · Stealth disadvantage'},
-  {n:'Breastplate',  d:'AC 14 + DEX (max 2) · Medium'},
-  {n:'Half Plate',   d:'AC 15 + DEX (max 2) · Medium · Stealth disadvantage'},
-  {n:'Ring Mail',    d:'AC 14 · Heavy · Stealth disadvantage'},
-  {n:'Chain Mail',   d:'AC 16 · Heavy · Stealth disadvantage · STR 13 required'},
-  {n:'Splint',       d:'AC 17 · Heavy · Stealth disadvantage · STR 15 required'},
-  {n:'Plate',        d:'AC 18 · Heavy · Stealth disadvantage · STR 15 required'},
-  {n:'Shield',       d:'+2 AC · Requires one free hand · Cannot use with two-handed weapons'},
-  {n:'Unarmored (Barbarian)',d:'10 + DEX + CON modifier'},
-  {n:'Unarmored (Monk)',     d:'10 + DEX + WIS modifier'},
-  {n:'Natural Armor (Tortle)',d:'17 (base, no DEX bonus)'},
-];
 
 function buildReference() {
+  // Generic fill: uses c.n (name) and c.d (description)
   const fill = (id, arr) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -3917,8 +4007,57 @@ function buildReference() {
   fill('cover-list',      COVER_INFO);
   fill('dc-list',         DC_INFO);
   fill('dmg-list',        DMG_TYPES);
-  fill('weapons-list',    WEAPONS_TABLE);
-  fill('armor-list',      ARMOR_TABLE);
+
+  // Weapons table — grouped by category
+  const wEl = document.getElementById('weapons-list');
+  if (wEl) {
+    const cats = [...new Set(WEAPONS_TABLE.map(w => w.cat))];
+    wEl.innerHTML = cats.map(cat => {
+      const rows = WEAPONS_TABLE.filter(w => w.cat === cat).map(w =>
+        `<tr>
+          <td style="font-weight:600">${w.n}</td>
+          <td style="color:var(--gold2)">${w.dmg}</td>
+          <td style="color:var(--parch2);font-size:.8rem">${w.prop}</td>
+          <td style="color:var(--parch2);font-size:.8rem">${w.cost}</td>
+          <td style="color:var(--parch2);font-size:.8rem">${w.wt}lb</td>
+        </tr>`
+      ).join('');
+      return `<div style="margin-bottom:10px">
+        <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold2);border-bottom:1px solid rgba(201,168,76,.2);padding-bottom:3px;margin-bottom:4px">${cat}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:.84rem">
+          <tr style="font-size:.68rem;color:var(--gold);font-family:'Cinzel',serif">
+            <td>Name</td><td>Damage</td><td>Properties</td><td>Cost</td><td>Weight</td>
+          </tr>${rows}
+        </table>
+      </div>`;
+    }).join('');
+  }
+
+  // Armor table — grouped by category
+  const aEl = document.getElementById('armor-list');
+  if (aEl) {
+    const cats = [...new Set(ARMOR_TABLE.map(a => a.cat))];
+    aEl.innerHTML = cats.map(cat => {
+      const rows = ARMOR_TABLE.filter(a => a.cat === cat).map(a =>
+        `<tr>
+          <td style="font-weight:600">${a.n}</td>
+          <td style="color:var(--gold2)">${a.ac}</td>
+          <td style="color:var(--parch2);font-size:.8rem">STR ${a.str}</td>
+          <td style="color:${a.stealth==='Disadv'?'#e05555':'var(--parch2)'};font-size:.8rem">${a.stealth}</td>
+          <td style="color:var(--parch2);font-size:.8rem">${a.cost}</td>
+          <td style="color:var(--parch2);font-size:.8rem">${a.wt}lb</td>
+        </tr>`
+      ).join('');
+      return `<div style="margin-bottom:10px">
+        <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold2);border-bottom:1px solid rgba(201,168,76,.2);padding-bottom:3px;margin-bottom:4px">${cat}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:.84rem">
+          <tr style="font-size:.68rem;color:var(--gold);font-family:'Cinzel',serif">
+            <td>Name</td><td>AC</td><td>Str Req</td><td>Stealth</td><td>Cost</td><td>Weight</td>
+          </tr>${rows}
+        </table>
+      </div>`;
+    }).join('');
+  }
 }
 
 /* =============================================================================
@@ -3928,82 +4067,339 @@ function viewCharacter(id) {
   const data   = getUserData();
   const c      = data.characters.find(x => x.id === id);
   if (!c) return;
+
   const scores = c.abilityScores || {};
-  const lvl    = c.level || 1;
-  const p      = pb(lvl);
+  const racial = (() => {
+    const rd = RACE_DATA[c.race] || {};
+    return rd.bonuses || {};
+  })();
+  // Final ability scores = base + racial bonus
+  const finalScore = a => (parseInt(scores[a]) || 10) + (racial[a] || 0);
+  const lvl  = c.level || 1;
+  const p    = pb(lvl);
+  const dex  = mod(finalScore('DEX'));
+  const wis  = mod(finalScore('WIS'));
+  const int_ = mod(finalScore('INT'));
+
+  // Passive scores
+  const passivePerc  = 10 + wis  + (c.skillProfs?.includes('Perception')   ? p : 0) + (c.skillExp?.includes('Perception')   ? p : 0);
+  const passiveInv   = 10 + int_ + (c.skillProfs?.includes('Investigation') ? p : 0) + (c.skillExp?.includes('Investigation') ? p : 0);
+  const passiveIns   = 10 + wis  + (c.skillProfs?.includes('Insight')       ? p : 0) + (c.skillExp?.includes('Insight')       ? p : 0);
+
+  // Spell stats
+  const spellAbScore = finalScore(c.spellAbility || 'INT');
+  const spellMod     = mod(spellAbScore);
+  const spellDC      = 8 + p + spellMod;
+  const spellAtk     = p + spellMod;
+
+  // Skill rows
   const skillRows = SKILLS_DATA.map(sk => {
-    const prof  = c.skillProfs && c.skillProfs.includes(sk.name);
-    const exp   = c.skillExp   && c.skillExp.includes(sk.name);
-    const bonus = mod(scores[sk.ab] || 10) + (exp ? p*2 : prof ? p : 0);
-    return `<tr><td>${exp ? '★' : prof ? '●' : '○'}</td><td>${sk.name}</td><td style="text-align:right">${fmod(bonus)}</td></tr>`;
+    const prof  = c.skillProfs?.includes(sk.name);
+    const exp   = c.skillExp?.includes(sk.name);
+    const bonus = mod(finalScore(sk.ab)) + (exp ? p*2 : prof ? p : 0);
+    return `<tr>
+      <td style="width:16px">${exp ? '★' : prof ? '●' : '○'}</td>
+      <td>${sk.name} <span style="color:#999;font-size:.78rem">(${sk.ab})</span></td>
+      <td style="text-align:right;font-weight:600">${fmod(bonus)}</td>
+    </tr>`;
   }).join('');
+
+  // Save rows
   const saveRows = ABILITIES.map(a => {
-    const prof  = c.saveProfs && c.saveProfs.includes(a);
-    const bonus = mod(scores[a] || 10) + (prof ? p : 0);
-    return `<tr><td>${prof ? '●' : '○'}</td><td>${ABILITY_NAMES[a]}</td><td style="text-align:right">${fmod(bonus)}</td></tr>`;
+    const prof  = c.saveProfs?.includes(a);
+    const bonus = mod(finalScore(a)) + (prof ? p : 0);
+    return `<tr>
+      <td style="width:16px">${prof ? '●' : '○'}</td>
+      <td>${ABILITY_NAMES[a]}</td>
+      <td style="text-align:right;font-weight:600">${fmod(bonus)}</td>
+    </tr>`;
   }).join('');
+
+  // Armor proficiencies
+  const armorProfs = [
+    c.profLight  ? 'Light' : null,
+    c.profMedium ? 'Medium' : null,
+    c.profHeavy  ? 'Heavy' : null,
+    c.profShield ? 'Shields' : null,
+  ].filter(Boolean).join(', ') || 'None';
+
+  // Spell slots display
+  const slotDisplay = (() => {
+    if (!c.spellAbility || !c.spells?.length) return '';
+    const cd = CLASS_DATA[c.cls];
+    if (!cd || !cd.spellAb) return '';
+    const slots = c.spellSlots || {};
+    const rows = Object.entries(slots).filter(([,v]) => v.total > 0).map(([lvl, v]) =>
+      `<td style="text-align:center">${v.total - (v.used||0)}/${v.total}</td>`
+    ).join('');
+    const hdrs = Object.entries(slots).filter(([,v]) => v.total > 0).map(([lvl]) =>
+      `<td style="text-align:center;font-size:.72rem;color:#7a4800">${lvl==='1'?'1st':lvl==='2'?'2nd':lvl==='3'?'3rd':lvl+'th'}</td>`
+    ).join('');
+    return hdrs ? `<table style="width:100%"><tr>${hdrs}</tr><tr>${rows}</tr></table>` : '';
+  })();
+
+  // Features list
+  const allFeatures = [
+    ...(c.customFeatures || []).map(f => ({ name: f.name, desc: f.desc })),
+  ];
+
   const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html><html><head><title>${c.name} — Character Sheet</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  if (!win) { alert('Pop-up blocked! Please allow pop-ups for this page.'); return; }
+
+  win.document.write(`<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <title>${c.name || 'Character'} — Character Sheet</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
   <style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Crimson Text',serif;background:#f5ead0;color:#1a1000;max-width:960px;margin:0 auto;padding:20px;font-size:15px;}
-  h1{font-family:'Cinzel',serif;color:#7a4800;font-size:1.8rem;border-bottom:2px solid #c9a84c;padding-bottom:6px;margin-bottom:6px;}
-  h2{font-family:'Cinzel',serif;color:#7a4800;font-size:1rem;margin:14px 0 8px;border-bottom:1px solid #c9a84c66;padding-bottom:4px;}
-  .sub{font-style:italic;color:#555;margin-bottom:10px;font-size:.9rem;}
-  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin:14px 0;}
-  .ab{background:#fff;border:2px solid #c9a84c;padding:8px;text-align:center;}
-  .ab .lbl{font-family:'Cinzel',serif;font-size:.6rem;color:#7a4800;}
-  .ab .sc{font-size:1.6rem;font-weight:700;}.ab .md{color:#c9a84c;font-size:.88rem;}
-  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-  .sec{background:#fff;border:1px solid #c9a84c;padding:12px;margin-bottom:12px;}
-  table{width:100%;border-collapse:collapse;}
-  td{padding:3px 5px;border-bottom:1px solid #c9a84c22;font-size:.88rem;}
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0;}
-  .cs{border:2px solid #c9a84c;padding:8px;text-align:center;background:#fff;}
-  .cs .val{font-size:1.4rem;font-family:'Cinzel',serif;}
-  .cs .lbl{font-size:.6rem;color:#7a4800;font-family:'Cinzel',serif;}
-  @media print{body{max-width:none;padding:10px;}}
-  .print-btn{background:#c9a84c;border:none;padding:10px 22px;font-family:'Cinzel',serif;cursor:pointer;font-size:.9rem;margin-bottom:16px;}
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Crimson Text',serif;background:#f5ead0;color:#1a0f00;max-width:1000px;margin:0 auto;padding:20px;font-size:14px;line-height:1.4;}
+    h1{font-family:'Cinzel',serif;color:#6b3800;font-size:1.9rem;border-bottom:3px solid #c9a84c;padding-bottom:6px;margin-bottom:4px;}
+    h2{font-family:'Cinzel',serif;color:#6b3800;font-size:.85rem;letter-spacing:.05em;margin:12px 0 6px;border-bottom:1px solid #c9a84c55;padding-bottom:3px;text-transform:uppercase;}
+    .sub{color:#555;margin-bottom:4px;font-size:.9rem;font-style:italic;}
+    /* Layout */
+    .sheet-header{display:flex;gap:16px;align-items:flex-start;margin-bottom:12px;}
+    .three-col{display:grid;grid-template-columns:200px 1fr 1fr;gap:12px;margin-bottom:12px;}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+    .full{margin-bottom:12px;}
+    /* Boxes */
+    .sec{background:#fff;border:1px solid #c9a84c88;padding:10px 12px;break-inside:avoid;}
+    .sec-tan{background:#fdf5e0;border:1px solid #c9a84c55;padding:10px 12px;break-inside:avoid;}
+    /* Ability score grid */
+    .ab-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;}
+    .ab-box{background:#fff;border:2px solid #c9a84c;padding:8px 4px;text-align:center;}
+    .ab-name{font-family:'Cinzel',serif;font-size:.55rem;color:#6b3800;letter-spacing:.05em;text-transform:uppercase;}
+    .ab-score{font-size:1.5rem;font-family:'Cinzel',serif;font-weight:700;line-height:1.1;}
+    .ab-mod{font-size:.85rem;color:#c9a84c;font-weight:600;}
+    .ab-racial{font-size:.65rem;color:#888;margin-top:1px;}
+    /* Combat stats */
+    .stat-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;}
+    .stat-box{background:#fff;border:2px solid #c9a84c;padding:6px 4px;text-align:center;}
+    .stat-val{font-family:'Cinzel',serif;font-size:1.2rem;font-weight:700;}
+    .stat-lbl{font-size:.55rem;color:#6b3800;font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:.04em;}
+    /* Tables */
+    table{width:100%;border-collapse:collapse;}
+    td,th{padding:2px 4px;font-size:.82rem;}
+    tr{border-bottom:1px solid #c9a84c18;}
+    /* Passive scores */
+    .passive-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #c9a84c18;font-size:.84rem;}
+    .passive-val{font-family:'Cinzel',serif;font-weight:700;color:#6b3800;font-size:.9rem;}
+    /* Death saves */
+    .ds-pip{display:inline-block;width:12px;height:12px;border-radius:50%;border:1.5px solid #aaa;margin:0 2px;vertical-align:middle;}
+    .ds-pip.filled-s{background:#55a055;border-color:#55a055;}
+    .ds-pip.filled-f{background:#e05555;border-color:#e05555;}
+    /* Spell slot pips */
+    .slot-used{display:inline-block;width:10px;height:10px;border-radius:50%;background:#c9a84c;margin:1px;}
+    .slot-empty{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid #c9a84c;margin:1px;}
+    /* Conditions */
+    .condition-tag{display:inline-block;padding:1px 6px;border:1px solid #e05555;color:#e05555;font-size:.72rem;margin:2px;border-radius:2px;}
+    /* Print */
+    .print-btn{background:#c9a84c;border:none;padding:8px 20px;font-family:'Cinzel',serif;cursor:pointer;font-size:.85rem;margin-bottom:14px;border-radius:2px;}
+    @media print{.print-btn{display:none;}body{padding:8px;}h2{margin:8px 0 4px;}td,th{padding:1px 3px;}}
+    p{margin-bottom:4px;}
+    .feature-name{font-weight:600;color:#6b3800;}
   </style></head><body>
-  <button class="print-btn" onclick="window.print()">🖨 Print / Save PDF</button>
-  <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:14px">
+
+  <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+
+  <!-- ── HEADER ── -->
+  <div class="sheet-header">
     <div style="flex:1">
-      <h1>${c.name || 'Unnamed'}</h1>
+      <h1>${c.name || 'Unnamed Adventurer'}</h1>
       <div class="sub">
-        Level ${lvl} ${c.race||'?'}${c.subrace?' ('+c.subrace+')':''} ${c.cls||'?'}${c.subclass?' — '+c.subclass:''}
-        ${c.mcClasses&&c.mcClasses.length?' / '+c.mcClasses.map(m=>m.level+' '+m.cls+(m.sub?' ('+m.sub+')':'')).join('/'):''}
-        &nbsp;•&nbsp; ${c.background||'No Background'} &nbsp;•&nbsp; ${c.alignment||'Unaligned'}
+        Level ${lvl}
+        ${c.race||'?'}${c.subrace ? ' ('+c.subrace+')' : ''}
+        &nbsp;·&nbsp;
+        ${c.cls||'?'}${c.subclass ? ' — '+c.subclass : ''}
+        ${c.mcClasses?.length ? ' / '+c.mcClasses.map(m=>m.level+' '+m.cls+(m.sub?' ('+m.sub+')':'')).join(' / ') : ''}
+        &nbsp;·&nbsp; ${c.background||'No Background'}
+        &nbsp;·&nbsp; ${c.alignment||'Unaligned'}
       </div>
-      <div class="sub">XP: ${c.xp||0} &nbsp;•&nbsp; Prof Bonus: ${fmod(p)} &nbsp;•&nbsp; Inspiration: ${c.inspiration?'Yes':'No'} &nbsp;•&nbsp; Exhaustion: ${c.exhaustion||0}</div>
+      <div class="sub">
+        XP: <strong>${(c.xp||0).toLocaleString()}</strong>
+        &nbsp;·&nbsp; Proficiency Bonus: <strong>${fmod(p)}</strong>
+        &nbsp;·&nbsp; Inspiration: <strong>${c.inspiration ? '★ Yes' : 'No'}</strong>
+        ${c.exhaustion > 0 ? `&nbsp;·&nbsp; <span style="color:#e05555">Exhaustion: ${c.exhaustion}</span>` : ''}
+        ${c.concentration ? `&nbsp;·&nbsp; Concentrating: <strong style="color:#c9a84c">${c.concentration}</strong>` : ''}
+      </div>
     </div>
-    ${c.portrait ? `<img src="${c.portrait}" style="width:80px;height:100px;object-fit:cover;border:2px solid #c9a84c" onerror="this.remove()">` : ''}
+    ${c.portrait ? `<img src="${c.portrait}" style="width:80px;height:100px;object-fit:cover;border:2px solid #c9a84c;flex-shrink:0" onerror="this.remove()">` : ''}
   </div>
-  <div class="grid">${ABILITIES.map(a=>`<div class="ab"><div class="lbl">${ABILITY_NAMES[a]}</div><div class="sc">${scores[a]||10}</div><div class="md">${fmod(mod(scores[a]||10))}</div></div>`).join('')}</div>
-  <div class="stats">
-    <div class="cs"><div class="lbl">Armor Class</div><div class="val">${c.ac||10}</div></div>
-    <div class="cs"><div class="lbl">Initiative</div><div class="val">${fmod(mod(scores.DEX||10))}</div></div>
-    <div class="cs"><div class="lbl">Speed</div><div class="val">${c.speed||30}ft</div></div>
-    <div class="cs"><div class="lbl">HP</div><div class="val" style="font-size:1rem">${c.curhp||0}<span style="font-size:.7rem;color:#7a4800">/${c.maxhp||0}</span></div></div>
+
+  <!-- ── ABILITY SCORES ── -->
+  <div class="ab-grid">
+    ${ABILITIES.map(a => {
+      const base = parseInt(scores[a]) || 10;
+      const bonus = racial[a] || 0;
+      const total = base + bonus;
+      return `<div class="ab-box">
+        <div class="ab-name">${ABILITY_NAMES[a]}</div>
+        <div class="ab-score">${total}</div>
+        <div class="ab-mod">${fmod(mod(total))}</div>
+        ${bonus ? `<div class="ab-racial">Base ${base} +${bonus} racial</div>` : ''}
+      </div>`;
+    }).join('')}
   </div>
+
+  <!-- ── COMBAT STATS ── -->
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-lbl">Armor Class</div><div class="stat-val">${c.ac||10}</div></div>
+    <div class="stat-box"><div class="stat-lbl">Initiative</div><div class="stat-val">${fmod(dex)}</div></div>
+    <div class="stat-box"><div class="stat-lbl">Speed</div><div class="stat-val">${c.speed||30}<span style="font-size:.7rem">ft</span></div></div>
+    <div class="stat-box"><div class="stat-lbl">Max HP</div><div class="stat-val">${c.maxhp||0}</div></div>
+    <div class="stat-box"><div class="stat-lbl">Current HP</div><div class="stat-val" style="color:${(c.curhp||0)<(c.maxhp||1)/2?'#e05555':'inherit'}">${c.curhp||0}</div></div>
+    <div class="stat-box"><div class="stat-lbl">Temp HP</div><div class="stat-val">${c.temphp||0}</div></div>
+  </div>
+
+  <!-- ── THREE COLUMNS ── -->
+  <div class="three-col">
+
+    <!-- LEFT: Saves, Passives, Death Saves, Hit Dice -->
+    <div>
+      <div class="sec" style="margin-bottom:8px">
+        <h2>Saving Throws</h2>
+        <table>${saveRows}</table>
+      </div>
+
+      <div class="sec" style="margin-bottom:8px">
+        <h2>Passive Scores</h2>
+        <div class="passive-row"><span>Passive Perception</span><span class="passive-val">${passivePerc}</span></div>
+        <div class="passive-row"><span>Passive Investigation</span><span class="passive-val">${passiveInv}</span></div>
+        <div class="passive-row"><span>Passive Insight</span><span class="passive-val">${passiveIns}</span></div>
+      </div>
+
+      <div class="sec" style="margin-bottom:8px">
+        <h2>Hit Dice</h2>
+        <div style="font-size:.9rem">
+          <strong>${lvl}d${CLASS_DATA[c.cls]?.hd||8}</strong>
+          &nbsp;·&nbsp; Remaining: <strong>${c.hitDiceRemain ?? lvl}</strong>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h2>Death Saving Throws</h2>
+        <div style="margin-bottom:4px">
+          <span style="font-size:.78rem;color:#55a055">Successes: </span>
+          ${[0,1,2].map(i=>`<span class="ds-pip${(c.deathSuccesses||0)>i?' filled-s':''}"></span>`).join('')}
+        </div>
+        <div>
+          <span style="font-size:.78rem;color:#e05555">Failures: </span>
+          ${[0,1,2].map(i=>`<span class="ds-pip${(c.deathFailures||0)>i?' filled-f':''}"></span>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- MIDDLE: Skills -->
+    <div class="sec">
+      <h2>Skills</h2>
+      <table>${skillRows}</table>
+    </div>
+
+    <!-- RIGHT: Proficiencies, Attacks, Conditions -->
+    <div>
+      <div class="sec" style="margin-bottom:8px">
+        <h2>Proficiencies</h2>
+        <p><strong>Armor:</strong> ${armorProfs}</p>
+        ${c.profs ? `<p><strong>Weapons & Tools:</strong> ${c.profs}</p>` : ''}
+        ${c.languages ? `<p><strong>Languages:</strong> ${c.languages}</p>` : ''}
+      </div>
+
+      ${c.attacks?.length ? `<div class="sec" style="margin-bottom:8px">
+        <h2>Attacks & Actions</h2>
+        <table>
+          <tr style="font-size:.72rem;color:#6b3800"><td><b>Name</b></td><td><b>Bonus</b></td><td><b>Damage</b></td><td><b>Type</b></td></tr>
+          ${c.attacks.map(a=>`<tr><td>${a.name}</td><td>${a.bonus}</td><td>${a.dmg}</td><td>${a.type||''}</td></tr>`).join('')}
+        </table>
+      </div>` : ''}
+
+      ${(c.activeConditions?.length) ? `<div class="sec" style="margin-bottom:8px">
+        <h2>Active Conditions</h2>
+        ${c.activeConditions.map(cn=>`<span class="condition-tag">${cn}</span>`).join('')}
+      </div>` : ''}
+
+      <div class="sec">
+        <h2>Armor & Combat</h2>
+        <div class="passive-row"><span>Armor Class</span><span class="passive-val">${c.ac||10}</span></div>
+        <div class="passive-row"><span>Initiative</span><span class="passive-val">${fmod(dex)}</span></div>
+        ${c.spellAbility ? `<div class="passive-row"><span>Spell Save DC</span><span class="passive-val">${spellDC}</span></div>
+        <div class="passive-row"><span>Spell Attack Bonus</span><span class="passive-val">${fmod(spellAtk)}</span></div>` : ''}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SPELLS ── -->
+  ${c.spells?.length ? `<div class="full sec">
+    <h2>Spells ${c.spellAbility ? `· Save DC ${spellDC} · Atk ${fmod(spellAtk)} · Ability: ${c.spellAbility}` : ''}</h2>
+    ${slotDisplay ? `<div style="margin-bottom:8px"><strong style="font-size:.78rem;color:#6b3800">SPELL SLOTS (remaining/total):</strong><br>${slotDisplay}</div>` : ''}
+    <table>
+      <tr style="font-size:.72rem;color:#6b3800"><td><b>Name</b></td><td><b>Lvl</b></td><td><b>School</b></td><td><b>Cast Time</b></td><td><b>Range</b></td><td><b>Damage</b></td><td><b>Save</b></td><td><b>Conc</b></td><td><b>Ritual</b></td></tr>
+      ${c.spells.map(s=>`<tr>
+        <td><strong>${s.name}</strong></td>
+        <td>${s.level===0?'C':'L'+s.level}</td>
+        <td>${s.school||'—'}</td>
+        <td>${s.castTime||'—'}</td>
+        <td>${s.range||'—'}</td>
+        <td>${s.damage||'—'}</td>
+        <td>${s.save||'—'}</td>
+        <td>${s.concentration==='yes'?'©':''}</td>
+        <td>${s.ritual==='yes'?'(R)':''}</td>
+      </tr>`).join('')}
+    </table>
+  </div>` : ''}
+
+  <!-- ── EQUIPMENT ── -->
+  ${c.equipment?.length ? `<div class="full sec">
+    <h2>Equipment & Currency</h2>
+    <div style="margin-bottom:6px;font-size:.85rem">
+      ${c.cp?c.cp+'cp ':''}${c.sp?c.sp+'sp ':''}${c.ep?c.ep+'ep ':''}${c.gp?c.gp+'gp ':''}${c.pp?c.pp+'pp':''}
+    </div>
+    <table>
+      <tr style="font-size:.72rem;color:#6b3800"><td><b>Item</b></td><td><b>Qty</b></td><td><b>Weight</b></td><td><b>Notes</b></td></tr>
+      ${c.equipment.map(e=>`<tr><td>${e.name}</td><td>${e.qty}</td><td>${e.wt}lb</td><td>${e.note||''}</td></tr>`).join('')}
+    </table>
+  </div>` : ''}
+
+  <!-- ── FEATS ── -->
+  ${c.feats?.length ? `<div class="full sec">
+    <h2>Feats</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:4px">
+      ${c.feats.map(f=>`<span style="padding:2px 8px;border:1px solid #c9a84c88;font-size:.84rem">${f}</span>`).join('')}
+    </div>
+  </div>` : ''}
+
+  <!-- ── FEATURES ── -->
+  ${c.customFeatures?.length ? `<div class="full sec">
+    <h2>Features & Traits</h2>
+    ${c.customFeatures.map(f=>`<div style="margin-bottom:6px"><span class="feature-name">${f.name}:</span> ${f.desc||''}</div>`).join('')}
+  </div>` : ''}
+
+  <!-- ── PERSONALITY & BACKSTORY ── -->
   <div class="two-col">
-    <div>
-      <div class="sec"><h2>Saving Throws</h2><table>${saveRows}</table></div>
-      <div class="sec"><h2>Skills</h2><table>${skillRows}</table></div>
-    </div>
-    <div>
-      ${c.languages||c.profs?`<div class="sec"><h2>Proficiencies & Languages</h2>${c.languages?`<p><b>Languages:</b> ${c.languages}</p>`:''}${c.profs?`<p><b>Tools/Weapons:</b> ${c.profs}</p>`:''}</div>`:''}
-      ${c.attacks&&c.attacks.length?`<div class="sec"><h2>Attacks</h2><table><tr style="font-size:.75rem;color:#7a4800"><td>Name</td><td>Bonus</td><td>Damage</td><td>Type</td></tr>${c.attacks.map(a=>`<tr><td>${a.name}</td><td>${a.bonus}</td><td>${a.dmg}</td><td>${a.type}</td></tr>`).join('')}</table></div>`:''}
-      ${c.feats&&c.feats.length?`<div class="sec"><h2>Feats</h2>${c.feats.map(f=>`<div>• ${f}</div>`).join('')}</div>`:''}
-    </div>
+    ${(c.traits||c.ideals||c.bonds||c.flaws) ? `<div class="sec">
+      <h2>Personality</h2>
+      ${c.traits  ? `<p><strong>Traits:</strong> ${c.traits}</p>` : ''}
+      ${c.ideals  ? `<p><strong>Ideals:</strong> ${c.ideals}</p>` : ''}
+      ${c.bonds   ? `<p><strong>Bonds:</strong> ${c.bonds}</p>` : ''}
+      ${c.flaws   ? `<p><strong>Flaws:</strong> ${c.flaws}</p>` : ''}
+    </div>` : '<div></div>'}
+    ${(c.age||c.height||c.weight||c.eyes||c.hair||c.skin) ? `<div class="sec">
+      <h2>Physical Description</h2>
+      ${c.age    ? `<p><strong>Age:</strong> ${c.age}</p>` : ''}
+      ${c.height ? `<p><strong>Height:</strong> ${c.height}</p>` : ''}
+      ${c.weight ? `<p><strong>Weight:</strong> ${c.weight}</p>` : ''}
+      ${c.eyes   ? `<p><strong>Eyes:</strong> ${c.eyes}</p>` : ''}
+      ${c.hair   ? `<p><strong>Hair:</strong> ${c.hair}</p>` : ''}
+      ${c.skin   ? `<p><strong>Skin:</strong> ${c.skin}</p>` : ''}
+    </div>` : '<div></div>'}
   </div>
-  ${c.spells&&c.spells.length?`<div class="sec"><h2>Spells</h2><table><tr style="font-size:.75rem;color:#7a4800"><td>Name</td><td>Level</td><td>School</td><td>Cast Time</td><td>Damage</td><td>Save</td></tr>${c.spells.map(s=>`<tr><td>${s.name}${s.concentration==='yes'?' ©':''}${s.ritual==='yes'?' (R)':''}</td><td>${s.level===0?'Cantrip':'L'+s.level}</td><td>${s.school}</td><td>${s.castTime||'—'}</td><td>${s.damage||'—'}</td><td>${s.save||'—'}</td></tr>`).join('')}</table></div>`:''}
-  ${c.equipment&&c.equipment.length?`<div class="sec"><h2>Equipment</h2><table><tr style="font-size:.75rem;color:#7a4800"><td>Item</td><td>Qty</td><td>Weight</td><td>Notes</td></tr>${c.equipment.map(e=>`<tr><td>${e.name}</td><td>${e.qty}</td><td>${e.wt}lb</td><td>${e.note||''}</td></tr>`).join('')}</table><p style="margin-top:8px;font-size:.85rem">Currency: ${c.cp||0}cp / ${c.sp||0}sp / ${c.ep||0}ep / ${c.gp||0}gp / ${c.pp||0}pp</p></div>`:''}
-  ${c.traits||c.ideals||c.bonds||c.flaws?`<div class="sec"><h2>Personality</h2><div class="two-col"><div>${c.traits?`<p><b>Traits:</b> ${c.traits}</p>`:''}${c.ideals?`<p><b>Ideals:</b> ${c.ideals}</p>`:''}</div><div>${c.bonds?`<p><b>Bonds:</b> ${c.bonds}</p>`:''}${c.flaws?`<p><b>Flaws:</b> ${c.flaws}</p>`:''}</div></div></div>`:''}
-  ${c.backstory?`<div class="sec"><h2>Backstory</h2><p>${c.backstory}</p></div>`:''}
-  ${c.notes?`<div class="sec"><h2>Session Notes</h2><p>${c.notes}</p></div>`:''}
+
+  ${c.backstory ? `<div class="full sec"><h2>Backstory</h2><p style="white-space:pre-wrap">${c.backstory}</p></div>` : ''}
+  ${c.allies    ? `<div class="full sec"><h2>Allies & Organizations</h2><p>${c.allies}</p></div>` : ''}
+  ${c.notes     ? `<div class="full sec"><h2>Session Notes</h2><p style="white-space:pre-wrap">${c.notes}</p></div>` : ''}
+
   </body></html>`);
+  win.document.close();
 }
+
 
 /* =============================================================================
    MODAL HELPERS
@@ -4228,38 +4624,84 @@ function clearInitTracker() { initList=[]; initTurn=0; initRound=1; renderInitLi
 /* =============================================================================
    PARTY VIEW
 ============================================================================= */
+let partyViewListener = null;
+
+function buildCharCard(c, username) {
+  const condColors = { Blinded:'#aaa', Charmed:'#e8a', Poisoned:'#8e8', Prone:'#fa8',
+    Frightened:'#f66', Stunned:'#a8f', Paralyzed:'#f8a', Unconscious:'#888', Exhausted:'#fa4' };
+  const hpPct  = c.maxhp ? Math.min(100, Math.round((c.curhp/c.maxhp)*100)) : 0;
+  const hpColor = hpPct > 50 ? '#55a055' : hpPct > 25 ? '#c9a84c' : '#e05555';
+  const conds  = (c.activeConditions||[]).map(cn =>
+    `<span style="font-size:.68rem;padding:1px 5px;background:rgba(80,80,80,.4);border-radius:2px;color:${condColors[cn]||'#ccc'}">${cn}</span>`
+  ).join('');
+  return `<div style="background:var(--dark3);border:1px solid rgba(201,168,76,.2);padding:10px;position:relative">
+    <div style="font-size:.65rem;color:var(--parch2);position:absolute;top:6px;right:8px;font-style:italic">${username}</div>
+    <div style="font-family:'Cinzel',serif;font-size:.85rem;color:var(--gold);margin-bottom:2px;padding-right:60px">${c.name||'Unnamed'}</div>
+    <div style="font-size:.78rem;color:var(--parch2);margin-bottom:6px">Lvl ${c.level||1} ${c.race||''} ${c.cls||''}${c.subclass?' — '+c.subclass:''}</div>
+    <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px">
+      <span>HP: <strong style="color:${hpColor}">${c.curhp||0}/${c.maxhp||0}</strong></span>
+      <span>AC: <strong>${c.ac||10}</strong></span>
+      <span>Speed: ${c.speed||30}ft</span>
+    </div>
+    <div style="background:var(--dark4);height:6px;border-radius:2px;overflow:hidden;margin-bottom:6px">
+      <div style="background:${hpColor};height:100%;width:${hpPct}%;transition:width .3s"></div>
+    </div>
+    ${c.concentration ? `<div style="font-size:.72rem;color:var(--gold2);margin-bottom:3px">© Concentrating: ${c.concentration}</div>` : ''}
+    ${c.inspiration ? '<span style="font-size:.72rem;color:var(--gold)">★ Inspired</span>' : ''}
+    ${c.exhaustion > 0 ? `<span style="font-size:.72rem;color:#f66"> Exhaustion ${c.exhaustion}</span>` : ''}
+    ${conds ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${conds}</div>` : ''}
+  </div>`;
+}
+
+function renderPartyGrid(allChars) {
+  const el = document.getElementById('party-view-list');
+  if (!el) return;
+  if (!allChars.length) {
+    el.innerHTML = '<div class="muted">No characters found across all players yet. Characters appear here as players save them.</div>';
+    return;
+  }
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px">' +
+    allChars.map(({c, username}) => buildCharCard(c, username)).join('') + '</div>';
+}
+
 function refreshPartyView() {
   const el = document.getElementById('party-view-list');
   if (!el) return;
-  const data = getUserData();
-  if (!data.characters || !data.characters.length) {
-    el.innerHTML = '<div class="muted">No characters saved yet.</div>';
+
+  // Stop old listener
+  if (partyViewListener) {
+    db.ref('userData').off('value', partyViewListener);
+    partyViewListener = null;
+  }
+
+  el.innerHTML = '<div class="muted" style="padding:10px">Loading party from Firebase…</div>';
+
+  // Listen live to ALL users' data
+  if (!db) {
+    const data = getUserData();
+    renderPartyGrid((data.characters||[]).map(c => ({ c, username: currentUser })));
     return;
   }
-  const condColors = { Blinded:'#aaa', Charmed:'#e8a', Poisoned:'#8e8', Prone:'#fa8',
-    Frightened:'#f66', Stunned:'#a8f', Paralyzed:'#f8a', Unconscious:'#888', Exhausted:'#fa4' };
-  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">` +
-    data.characters.map(c => {
-      const hpPct = c.maxhp ? Math.round((c.curhp/c.maxhp)*100) : 0;
-      const hpColor = hpPct > 50 ? '#55a055' : hpPct > 25 ? '#c9a84c' : '#e05555';
-      const conds = (c.activeConditions||[]).map(cn =>
-        `<span style="font-size:.68rem;padding:1px 5px;background:rgba(80,80,80,.4);border-radius:2px;color:${condColors[cn]||'#ccc'}">${cn}</span>`
-      ).join('');
-      return `<div style="background:var(--dark3);border:1px solid rgba(201,168,76,.2);padding:10px">
-        <div style="font-family:'Cinzel',serif;font-size:.85rem;color:var(--gold);margin-bottom:2px">${c.name||'Unnamed'}</div>
-        <div style="font-size:.78rem;color:var(--parch2);margin-bottom:6px">Lvl ${c.level||1} ${c.race||''} ${c.cls||''}</div>
-        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px">
-          <span>HP: <strong style="color:${hpColor}">${c.curhp||0}/${c.maxhp||0}</strong></span>
-          <span>AC: <strong>${c.ac||10}</strong></span>
-        </div>
-        <div style="background:var(--dark4);height:6px;border-radius:2px;overflow:hidden;margin-bottom:6px">
-          <div style="background:${hpColor};height:100%;width:${hpPct}%;transition:width .3s"></div>
-        </div>
-        ${c.inspiration ? '<span style="font-size:.72rem;color:var(--gold)">★ Inspired</span>' : ''}
-        ${c.exhaustion > 0 ? `<span style="font-size:.72rem;color:#f66"> · Exhaustion ${c.exhaustion}</span>` : ''}
-        ${conds ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">${conds}</div>` : ''}
-      </div>`;
-    }).join('') + '</div>';
+  partyViewListener = db.ref('userData').on('value', snap => {
+    if (!snap.exists()) {
+      el.innerHTML = '<div class="muted">No players have saved characters yet.</div>';
+      return;
+    }
+    const allChars = [];
+    snap.forEach(userSnap => {
+      const username = userSnap.key.replace(/_/g, ' ');
+      const userData = userSnap.val();
+      if (userData?.characters?.length) {
+        userData.characters.forEach(c => allChars.push({ c, username }));
+      }
+    });
+    renderPartyGrid(allChars);
+  }, err => {
+    // Firebase failed — fall back to local
+    const data = getUserData();
+    const allChars = (data.characters||[]).map(c => ({ c, username: currentUser }));
+    renderPartyGrid(allChars);
+  });
 }
 
 /* =============================================================================
@@ -4535,6 +4977,69 @@ function filterSpellDB() {
 /* =============================================================================
    EQUIPMENT SHOP
 ============================================================================= */
+/* =============================================================================
+   WEAPONS & ARMOR REFERENCE TABLES (used by Quick Reference page)
+============================================================================= */
+const WEAPONS_TABLE = [
+  // Simple Melee
+  {n:'Club',          cat:'Simple Melee',   dmg:'1d4 B',    prop:'Light',                    wt:2,  cost:'1 sp'},
+  {n:'Dagger',        cat:'Simple Melee',   dmg:'1d4 P',    prop:'Finesse, light, thrown 20/60', wt:1, cost:'2 gp'},
+  {n:'Greatclub',     cat:'Simple Melee',   dmg:'1d8 B',    prop:'Two-handed',               wt:10, cost:'2 sp'},
+  {n:'Handaxe',       cat:'Simple Melee',   dmg:'1d6 S',    prop:'Light, thrown 20/60',      wt:2,  cost:'5 gp'},
+  {n:'Javelin',       cat:'Simple Melee',   dmg:'1d6 P',    prop:'Thrown 30/120',            wt:2,  cost:'5 sp'},
+  {n:'Light Hammer',  cat:'Simple Melee',   dmg:'1d4 B',    prop:'Light, thrown 20/60',      wt:2,  cost:'2 gp'},
+  {n:'Mace',          cat:'Simple Melee',   dmg:'1d6 B',    prop:'—',                        wt:4,  cost:'5 gp'},
+  {n:'Quarterstaff',  cat:'Simple Melee',   dmg:'1d6/1d8 B',prop:'Versatile',                wt:4,  cost:'2 sp'},
+  {n:'Sickle',        cat:'Simple Melee',   dmg:'1d4 S',    prop:'Light',                    wt:2,  cost:'1 gp'},
+  {n:'Spear',         cat:'Simple Melee',   dmg:'1d6/1d8 P',prop:'Thrown 20/60, versatile',  wt:3,  cost:'1 gp'},
+  // Simple Ranged
+  {n:'Crossbow, Light',cat:'Simple Ranged', dmg:'1d8 P',    prop:'Loading, range 80/320, two-handed', wt:5, cost:'25 gp'},
+  {n:'Dart',          cat:'Simple Ranged',  dmg:'1d4 P',    prop:'Finesse, thrown 20/60',    wt:0.25,cost:'5 cp'},
+  {n:'Shortbow',      cat:'Simple Ranged',  dmg:'1d6 P',    prop:'Range 80/320, two-handed', wt:2,  cost:'25 gp'},
+  {n:'Sling',         cat:'Simple Ranged',  dmg:'1d4 B',    prop:'Range 30/120',             wt:0,  cost:'1 sp'},
+  // Martial Melee
+  {n:'Battleaxe',     cat:'Martial Melee',  dmg:'1d8/1d10 S',prop:'Versatile',               wt:4,  cost:'10 gp'},
+  {n:'Flail',         cat:'Martial Melee',  dmg:'1d8 B',    prop:'—',                        wt:2,  cost:'10 gp'},
+  {n:'Glaive',        cat:'Martial Melee',  dmg:'1d10 S',   prop:'Heavy, reach, two-handed', wt:6,  cost:'20 gp'},
+  {n:'Greataxe',      cat:'Martial Melee',  dmg:'1d12 S',   prop:'Heavy, two-handed',        wt:7,  cost:'30 gp'},
+  {n:'Greatsword',    cat:'Martial Melee',  dmg:'2d6 S',    prop:'Heavy, two-handed',        wt:6,  cost:'50 gp'},
+  {n:'Halberd',       cat:'Martial Melee',  dmg:'1d10 S',   prop:'Heavy, reach, two-handed', wt:6,  cost:'20 gp'},
+  {n:'Lance',         cat:'Martial Melee',  dmg:'1d12 P',   prop:'Reach, special',           wt:6,  cost:'10 gp'},
+  {n:'Longsword',     cat:'Martial Melee',  dmg:'1d8/1d10 S',prop:'Versatile',               wt:3,  cost:'15 gp'},
+  {n:'Maul',          cat:'Martial Melee',  dmg:'2d6 B',    prop:'Heavy, two-handed',        wt:10, cost:'10 gp'},
+  {n:'Morningstar',   cat:'Martial Melee',  dmg:'1d8 P+B',  prop:'—',                        wt:4,  cost:'15 gp'},
+  {n:'Pike',          cat:'Martial Melee',  dmg:'1d10 P',   prop:'Heavy, reach, two-handed', wt:18, cost:'5 gp'},
+  {n:'Rapier',        cat:'Martial Melee',  dmg:'1d8 P',    prop:'Finesse',                  wt:2,  cost:'25 gp'},
+  {n:'Scimitar',      cat:'Martial Melee',  dmg:'1d6 S',    prop:'Finesse, light',           wt:3,  cost:'25 gp'},
+  {n:'Shortsword',    cat:'Martial Melee',  dmg:'1d6 P',    prop:'Finesse, light',           wt:2,  cost:'10 gp'},
+  {n:'Trident',       cat:'Martial Melee',  dmg:'1d6/1d8 P',prop:'Thrown 20/60, versatile',  wt:4,  cost:'5 gp'},
+  {n:'War Pick',      cat:'Martial Melee',  dmg:'1d8 P',    prop:'—',                        wt:2,  cost:'5 gp'},
+  {n:'Warhammer',     cat:'Martial Melee',  dmg:'1d8/1d10 B',prop:'Versatile',               wt:2,  cost:'15 gp'},
+  {n:'Whip',          cat:'Martial Melee',  dmg:'1d4 S',    prop:'Finesse, reach',           wt:3,  cost:'2 gp'},
+  // Martial Ranged
+  {n:'Blowgun',       cat:'Martial Ranged', dmg:'1 P',      prop:'Loading, range 25/100',    wt:1,  cost:'10 gp'},
+  {n:'Crossbow, Hand',cat:'Martial Ranged', dmg:'1d6 P',    prop:'Light, loading, range 30/120', wt:3, cost:'75 gp'},
+  {n:'Crossbow, Heavy',cat:'Martial Ranged',dmg:'1d10 P',   prop:'Heavy, loading, range 100/400, two-handed', wt:18, cost:'50 gp'},
+  {n:'Longbow',       cat:'Martial Ranged', dmg:'1d8 P',    prop:'Heavy, range 150/600, two-handed', wt:2, cost:'50 gp'},
+  {n:'Net',           cat:'Martial Ranged', dmg:'—',        prop:'Special, thrown 5/15',     wt:3,  cost:'1 gp'},
+];
+
+const ARMOR_TABLE = [
+  {n:'Padded',        cat:'Light',   ac:'11 + DEX',    str:'—', stealth:'Disadv', wt:8,  cost:'5 gp'},
+  {n:'Leather',       cat:'Light',   ac:'11 + DEX',    str:'—', stealth:'—',     wt:10, cost:'10 gp'},
+  {n:'Studded Leather',cat:'Light',  ac:'12 + DEX',    str:'—', stealth:'—',     wt:13, cost:'45 gp'},
+  {n:'Hide',          cat:'Medium',  ac:'12 + DEX(2)', str:'—', stealth:'—',     wt:12, cost:'10 gp'},
+  {n:'Chain Shirt',   cat:'Medium',  ac:'13 + DEX(2)', str:'—', stealth:'—',     wt:20, cost:'50 gp'},
+  {n:'Scale Mail',    cat:'Medium',  ac:'14 + DEX(2)', str:'—', stealth:'Disadv', wt:45, cost:'50 gp'},
+  {n:'Breastplate',   cat:'Medium',  ac:'14 + DEX(2)', str:'—', stealth:'—',     wt:20, cost:'400 gp'},
+  {n:'Half Plate',    cat:'Medium',  ac:'15 + DEX(2)', str:'—', stealth:'Disadv', wt:40, cost:'750 gp'},
+  {n:'Ring Mail',     cat:'Heavy',   ac:'14',          str:'—', stealth:'Disadv', wt:40, cost:'30 gp'},
+  {n:'Chain Mail',    cat:'Heavy',   ac:'16',          str:'13',stealth:'Disadv', wt:55, cost:'75 gp'},
+  {n:'Splint',        cat:'Heavy',   ac:'17',          str:'15',stealth:'Disadv', wt:60, cost:'200 gp'},
+  {n:'Plate',         cat:'Heavy',   ac:'18',          str:'15',stealth:'Disadv', wt:65, cost:'1,500 gp'},
+  {n:'Shield',        cat:'Shield',  ac:'+2',          str:'—', stealth:'—',     wt:6,  cost:'10 gp'},
+];
+
 const SHOP_ITEMS = [
   // Simple Weapons
   {name:'Club',cat:'Simple Weapons',cost:'1 sp',wt:2,desc:'1d4 bludgeoning · Light'},
@@ -4638,6 +5143,23 @@ function addShopItemToChar(name, wt) {
     alert(`Open a character first, then browse the shop to add "${name}" to their inventory.`);
   }
 }
+/* =============================================================================
+   SYNC STATUS HELPERS
+============================================================================= */
+function showSyncToast(msg, isError = false) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = isError ? '#e05555' : '#55a055';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.textContent = ''; }, 3000);
+}
+
+function setSyncStatus(msg, color = 'var(--parch2)') {
+  const el = document.getElementById('sync-status');
+  if (el) { el.textContent = msg; el.style.color = color; }
+}
+
 /* =============================================================================
    INITIALIZATION
 ============================================================================= */

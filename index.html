@@ -6125,9 +6125,11 @@ function filterSpellDB() {
 
   // Sort: by level, then name
   filtered.sort((a,b) => a.level !== b.level ? a.level - b.level : a.name.localeCompare(b.name));
+  // Cache for safe index-based lookup from button onclick
+  window._spellDBFiltered = filtered;
 
   let currentLevel = -1;
-  el.innerHTML = filtered.map(s => {
+  el.innerHTML = filtered.map((s, _spellDBIdx) => {
     const levelHeader = s.level !== currentLevel
       ? (() => { currentLevel = s.level; return `<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold2);letter-spacing:2px;text-transform:uppercase;padding:10px 0 4px;border-bottom:1px solid rgba(201,168,76,.2);margin-bottom:6px">${s.level===0?'Cantrips':'Level '+s.level+' Spells'}</div>`; })()
       : '';
@@ -6156,25 +6158,30 @@ function filterSpellDB() {
       <div style="font-size:.82rem;color:rgba(240,230,200,.65);line-height:1.4;margin-bottom:6px">${s.desc}</div>
       <div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center;justify-content:space-between">
         <div style="display:flex;gap:3px;flex-wrap:wrap">${classBadges}</div>
-        <button style="padding:3px 10px;background:linear-gradient(135deg,#1a1000,#2a1800);border:1px solid rgba(201,168,76,.4);color:var(--gold);font-family:'Cinzel',serif;font-size:.7rem;cursor:pointer;border-radius:2px" onclick="addSpellFromDB(${JSON.stringify(s.name)},${s.level},${JSON.stringify(s.school)},${JSON.stringify(s.castTime)},${JSON.stringify(s.range)},${JSON.stringify(s.duration)},${JSON.stringify(s.components)},${JSON.stringify(s.damageDice||'')},${JSON.stringify(s.damageType||'')},${JSON.stringify(s.desc)})">+ Add to Spellbook</button>
+        <button style="padding:3px 10px;background:linear-gradient(135deg,#1a1000,#2a1800);border:1px solid rgba(201,168,76,.4);color:var(--gold);font-family:'Cinzel',serif;font-size:.7rem;cursor:pointer;border-radius:2px" onclick="addSpellFromDB(${_spellDBIdx})">+ Add to Spellbook</button>
       </div>
     </div>`;
   }).join('');
 }
 
-function addSpellFromDB(name, level, school, castTime, range, duration, components, damageDice, damageType, desc) {
-  if (customSpells.some(s => s.name === name)) {
-    showSyncToast(name + ' already in spellbook'); return;
+function addSpellFromDB(idx) {
+  const s = (window._spellDBFiltered || [])[idx];
+  if (!s) { showSyncToast('Spell not found'); return; }
+  if (customSpells.some(sp => sp.name === s.name)) {
+    showSyncToast(s.name + ' already in spellbook'); return;
   }
-  const damage = damageDice && damageType ? `${damageDice} ${damageType}` : (damageType || damageDice || '');
-  customSpells.push({ name, level, school, castTime, range, duration, components, damage, desc,
-    concentration: desc.toLowerCase().includes('concentration') ? 'yes' : 'no',
-    ritual: castTime.toLowerCase().includes('ritual') ? 'yes' : 'no',
+  const damage = s.damageDice && s.damageType ? s.damageDice + ' ' + s.damageType : (s.damageType || s.damageDice || '');
+  customSpells.push({
+    name: s.name, level: s.level, school: s.school,
+    castTime: s.castTime, range: s.range, duration: s.duration,
+    components: s.components, damage, desc: s.desc,
+    concentration: (s.desc||'').toLowerCase().includes('concentration') ? 'yes' : 'no',
+    ritual: (s.castTime||'').toLowerCase().includes('ritual') ? 'yes' : 'no',
   });
   renderSpellList();
-  showSyncToast('Added ' + name + ' to spellbook ✓');
+  showSyncToast('Added ' + s.name + ' to spellbook ✓');
   closeModal('spell-lookup-modal');
-  // Switch to spells tab if not already there
+  // Switch to spells tab
   const spellsBtn = document.querySelector('.tab-btn[onclick*="spells"]');
   if (spellsBtn && !spellsBtn.classList.contains('active')) {
     creatorTab('spells', spellsBtn);

@@ -857,6 +857,7 @@ textarea { resize: vertical; min-height: 80px; }
       <button class="tab-btn" onclick="creatorTab('abilities',this)">Abilities</button>
       <button class="tab-btn" onclick="creatorTab('combat',this)">Combat</button>
       <button class="tab-btn" onclick="creatorTab('skills',this)">Skills</button>
+      <button class="tab-btn" onclick="creatorTab('choices',this)">Choices</button>
       <button class="tab-btn" onclick="creatorTab('spells',this)">Spells</button>
       <button class="tab-btn" onclick="creatorTab('equipment',this)">Equipment</button>
       <button class="tab-btn" onclick="creatorTab('features',this)">Features</button>
@@ -1099,6 +1100,12 @@ textarea { resize: vertical; min-height: 80px; }
         <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="prof-heavy"  style="width:auto;margin:0"> Heavy</label>
         <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="prof-shield" style="width:auto;margin:0"> Shields</label>
       </div>
+    </div>
+
+
+    <!-- ── CHOICES TAB ── -->
+    <div class="tab-panel" id="creator-choices">
+      <div id="choices-content"><div class="muted">Select a race and class to see available choices.</div></div>
     </div>
 
     <!-- ── SPELLS TAB ── -->
@@ -2699,7 +2706,8 @@ function updateRaceInfo() {
   updateRacialBonuses();
   updateEncumbrance();
   updateBuildSummary();
-}
+
+  if (document.getElementById('creator-choices')?.classList.contains('active')) renderChoicesPanel();}
 
 function updateRacialBonuses() {
   const r  = document.getElementById('c-race').value;
@@ -2838,6 +2846,8 @@ function updateLevel() {
     // Refresh class info panel with new level features
     updateClassInfo(document.getElementById('c-subclass').value || undefined);
   }
+  // Refresh choices panel if visible
+  if (document.getElementById('creator-choices')?.classList.contains('active')) renderChoicesPanel();
 }
 
 /* =============================================================================
@@ -3775,6 +3785,7 @@ function creatorTab(tab, btn) {
   const panel = document.getElementById('creator-' + tab);
   if (panel) panel.classList.add('active');
   // Refresh panels that need live calculation
+  if (tab === 'choices')   { renderChoicesPanel(); }
   if (tab === 'skills')    { buildSkillsList(); updateSkillsList(); updateSavesList(); }
   if (tab === 'spells')    { buildSpellSlotUI(); renderSpellList(); updateSpellStats(); }
   if (tab === 'equipment') { renderEquipList(); }
@@ -5785,6 +5796,670 @@ showSection = function(s) {
   }
   if (s === 'campaigns') renderCampaignList();
 };
+
+/* =============================================================================
+   CLASS CHOICES DATA — pact boons, invocations, fighting styles, metamagic, etc.
+============================================================================= */
+const CLASS_CHOICES = {
+  Warlock: {
+    pactBoon: {
+      label: 'Pact Boon', unlocksAt: 3, type: 'single',
+      options: [
+        {v:'Pact of the Chain', d:'Familiar (imp, pseudodragon, quasit, sprite, or patron-specific). Can attack via familiar with your reaction.'},
+        {v:'Pact of the Blade', d:'Conjure a magic weapon in any form. Counts as magical. Can be your bonded weapon as a warlock focus.'},
+        {v:'Pact of the Tome', d:'Book of Shadows: learn 3 cantrips from any class list. Also enables certain invocations.'},
+        {v:'Pact of the Talisman', d:'Talisman lets wearer add d4 to failed ability checks. Enables talisman-specific invocations.'},
+      ]
+    },
+    invocations: {
+      label: 'Eldritch Invocations', type: 'multi',
+      countByLevel: {2:2,3:2,4:2,5:3,6:3,7:4,8:4,9:5,10:5,11:5,12:6,13:6,14:6,15:7,16:7,17:7,18:8,19:8,20:8},
+      options: [
+        // No prereq
+        {v:'Agonizing Blast',     prereq:null,      d:'+CHA modifier to Eldritch Blast damage.'},
+        {v:'Armor of Shadows',    prereq:null,      d:'Cast Mage Armor on yourself at will, no spell slot.'},
+        {v:'Eldritch Mind',       prereq:null,      d:'Advantage on concentration saves.'},
+        {v:'Eldritch Sight',      prereq:null,      d:'Cast Detect Magic at will, no slot.'},
+        {v:'Eldritch Spear',      prereq:null,      d:'Eldritch Blast range becomes 300 ft.'},
+        {v:'Eyes of the Rune Keeper',prereq:null,   d:'Read all writing.'},
+        {v:'Fiendish Vigor',      prereq:null,      d:'Cast False Life on yourself at will (1st level) for free.'},
+        {v:'Gaze of Two Minds',   prereq:null,      d:'Use action: perceive through another willing creature\'s senses.'},
+        {v:'Grasp of Hadar',      prereq:null,      d:'Eldritch Blast: pull hit creature 10 ft closer.'},
+        {v:'Mask of Many Faces',  prereq:null,      d:'Cast Disguise Self at will.'},
+        {v:'Misty Visions',       prereq:null,      d:'Cast Silent Image at will.'},
+        {v:'Repelling Blast',     prereq:null,      d:'Eldritch Blast: push hit creature 10 ft away.'},
+        {v:'Thief of Five Fates', prereq:null,      d:'Cast Bane using a spell slot (1/long rest).'},
+        {v:'Thirsting Blade',     prereq:'Pact of the Blade, 5th level', d:'Attack twice with pact weapon (Extra Attack).'},
+        {v:'Voice of the Chain Master',prereq:'Pact of the Chain', d:'Communicate telepathically with familiar; perceive through its senses; speak through it.'},
+        {v:'Book of Ancient Secrets',prereq:'Pact of the Tome', d:'Record and cast rituals in Book of Shadows.'},
+        {v:'Beguiling Influence', prereq:null,      d:'Proficiency in Deception and Persuasion.'},
+        {v:'Devil\'s Sight',      prereq:null,      d:'See normally in magical and nonmagical darkness up to 120 ft.'},
+        {v:'Dreadful Word',       prereq:'5th level', d:'Cast Confusion using a spell slot 1/long rest.'},
+        {v:'Minions of Chaos',    prereq:'9th level', d:'Cast Conjure Elemental using a spell slot 1/long rest.'},
+        {v:'Mire the Mind',       prereq:'5th level', d:'Cast Slow using a spell slot 1/long rest.'},
+        {v:'One with Shadows',    prereq:'5th level', d:'While in dim light/darkness: become invisible as action.'},
+        {v:'Sculptor of Flesh',   prereq:'7th level', d:'Cast Polymorph using a spell slot 1/long rest.'},
+        {v:'Sign of Ill Omen',    prereq:'5th level', d:'Cast Bestow Curse using a spell slot 1/long rest.'},
+        {v:'Lifedrinker',         prereq:'Pact of the Blade, 12th level', d:'Pact weapon deals extra necrotic damage = CHA modifier.'},
+        {v:'Ghostly Gaze',        prereq:'7th level', d:'See through solid objects and walls up to 30 ft (concentration, 1 min, 1/rest).'},
+        {v:'Ascendant Step',      prereq:'9th level', d:'Cast Levitate on yourself at will.'},
+        {v:'Bewitching Whispers', prereq:'7th level', d:'Cast Compulsion 1/long rest.'},
+        {v:'Chains of Carceri',   prereq:'Pact of the Chain, 15th level', d:'Cast Hold Monster at will on celestials/fiends/elementals.'},
+        {v:'Master of Myriad Forms',prereq:'15th level', d:'Cast Alter Self at will.'},
+        {v:'Visions of Distant Realms',prereq:'15th level', d:'Cast Arcane Eye at will.'},
+        {v:'Whispers of the Grave',prereq:'9th level', d:'Cast Speak with Dead at will.'},
+        {v:'Witch Sight',         prereq:'15th level', d:'See true forms of shapechangers and those magically disguised within 30 ft.'},
+      ]
+    }
+  },
+  Fighter: {
+    fightingStyle: {
+      label: 'Fighting Style', unlocksAt: 1, type: 'single',
+      options: [
+        {v:'Archery',           d:'+2 to attack rolls with ranged weapons.'},
+        {v:'Defense',           d:'+1 AC while wearing armor.'},
+        {v:'Dueling',           d:'+2 melee damage when wielding weapon in one hand (no other weapon).'},
+        {v:'Great Weapon Fighting', d:'Reroll 1s and 2s on damage dice for two-handed/versatile weapons.'},
+        {v:'Protection',        d:'Use reaction to impose disadvantage on attack roll against nearby ally (requires shield).'},
+        {v:'Two-Weapon Fighting',d:'Add ability modifier to off-hand attack damage.'},
+        {v:'Blind Fighting',    d:'Blindsight 10 ft. Can effectively see invisible creatures within range.'},
+        {v:'Interception',      d:'Reduce damage to adjacent creature by 1d10 + PB (reaction, requires weapon/shield).'},
+        {v:'Superior Technique',d:'Learn one Battle Master maneuver. Gain one superiority die (d6).'},
+        {v:'Thrown Weapon Fighting',d:'+2 damage with thrown weapons. Draw thrown weapon as part of the attack.'},
+        {v:'Unarmed Fighting',  d:'Unarmed strikes deal 1d6+STR (1d8 if no other weapons). Grappled enemies take 1d4.'},
+      ]
+    },
+    secondFightingStyle: {
+      label: 'Second Fighting Style (Level 10)', unlocksAt: 10, type: 'single',
+      options: [
+        {v:'Archery',d:'+2 ranged'},{v:'Defense',d:'+1 AC'},{v:'Dueling',d:'+2 melee one-hand'},
+        {v:'Great Weapon Fighting',d:'Reroll 1s/2s'},{v:'Two-Weapon Fighting',d:'+dmg off-hand'},
+      ]
+    }
+  },
+  Paladin: {
+    fightingStyle: {
+      label: 'Fighting Style', unlocksAt: 2, type: 'single',
+      options: [
+        {v:'Blessed Warrior',   d:'Learn two cleric cantrips. Swap one whenever you gain a level.'},
+        {v:'Blind Fighting',    d:'Blindsight 10 ft.'},
+        {v:'Defense',           d:'+1 AC while wearing armor.'},
+        {v:'Dueling',           d:'+2 melee damage one-handed.'},
+        {v:'Great Weapon Fighting', d:'Reroll 1s/2s on two-handed/versatile damage.'},
+        {v:'Interception',      d:'Reduce damage to adjacent creature by 1d10+PB (reaction).'},
+        {v:'Protection',        d:'Disadvantage on attacks against nearby ally (reaction, shield required).'},
+      ]
+    }
+  },
+  Ranger: {
+    fightingStyle: {
+      label: 'Fighting Style', unlocksAt: 2, type: 'single',
+      options: [
+        {v:'Archery',           d:'+2 ranged attack rolls.'},
+        {v:'Blind Fighting',    d:'Blindsight 10 ft.'},
+        {v:'Defense',           d:'+1 AC while wearing armor.'},
+        {v:'Druidic Warrior',   d:'Learn two druid cantrips. Use WIS for them.'},
+        {v:'Dueling',           d:'+2 melee damage one-handed.'},
+        {v:'Thrown Weapon Fighting',d:'+2 thrown damage. Draw as part of attack.'},
+        {v:'Two-Weapon Fighting',d:'+ability modifier to off-hand damage.'},
+      ]
+    },
+    favoredEnemy: {
+      label: 'Favored Enemy', unlocksAt: 1, type: 'multi', maxCount: 1,
+      note: 'Gain 2nd at level 6, 3rd at level 14 (or use Tasha\'s optional rules for a bonus instead)',
+      options: [
+        {v:'Aberrations'},{v:'Beasts'},{v:'Celestials'},{v:'Constructs'},{v:'Dragons'},
+        {v:'Elementals'},{v:'Fey'},{v:'Fiends'},{v:'Giants'},{v:'Monstrosities'},
+        {v:'Oozes'},{v:'Plants'},{v:'Undead'},
+        {v:'Two humanoid races (choose)',d:'e.g. Orcs & Goblins'}
+      ]
+    },
+    naturalExplorer: {
+      label: 'Natural Explorer / Favored Terrain', unlocksAt: 1, type: 'multi', maxCount: 1,
+      note: 'Gain 2nd at level 6, 3rd at level 10',
+      options: [
+        {v:'Arctic'},{v:'Coast'},{v:'Desert'},{v:'Forest'},{v:'Grassland'},
+        {v:'Mountain'},{v:'Swamp'},{v:'Underdark'},
+      ]
+    }
+  },
+  Barbarian: {
+    primalPath: {
+      label: 'Primal Path (Subclass)', unlocksAt: 3, type: 'single', hideIfSubclass: true,
+      options: [] // handled by subclass selector
+    },
+    rageBonus: {
+      label: 'Rage Damage Bonus', unlocksAt: 1, type: 'display',
+      byLevel: {1:'+2',9:'+3',16:'+4'}
+    }
+  },
+  Bard: {
+    bardicInspiration: {
+      label: 'Bardic Inspiration Die', unlocksAt: 1, type: 'display',
+      byLevel: {1:'d6',5:'d8',10:'d10',15:'d12'}
+    },
+    magicalSecrets: {
+      label: 'Magical Secrets (spells from any class)', unlocksAt: 10, type: 'multi',
+      note: 'Choose 2 spells at 10th, 14th, and 18th level (College of Lore gets 2 at 6th)',
+      countByLevel: {10:2,14:4,18:6},
+      options: [{v:'Use the Spell Browser above to choose — these are tracked in your spellbook',d:'Any class spell is valid.'}]
+    }
+  },
+  Cleric: {
+    channelDivinity: {
+      label: 'Channel Divinity Uses', unlocksAt: 2, type: 'display',
+      byLevel: {2:'1/rest',6:'2/rest',18:'3/rest'}
+    }
+  },
+  Druid: {
+    wildShape: {
+      label: 'Wild Shape Max CR', unlocksAt: 2, type: 'display',
+      byLevel: {2:'CR 1/4 (no fly/swim)',4:'CR 1/2 (no fly)',8:'CR 1'}
+    }
+  },
+  Monk: {
+    martialArts: {
+      label: 'Martial Arts Die', unlocksAt: 1, type: 'display',
+      byLevel: {1:'d4',5:'d6',11:'d8',17:'d10'}
+    },
+    kiPoints: {
+      label: 'Ki Points', unlocksAt: 2, type: 'display',
+      byLevel: 'level' // ki points = monk level
+    }
+  },
+  Rogue: {
+    sneakAttack: {
+      label: 'Sneak Attack', unlocksAt: 1, type: 'display',
+      byLevel: {1:'1d6',2:'1d6',3:'2d6',4:'2d6',5:'3d6',6:'3d6',7:'4d6',8:'4d6',9:'5d6',10:'5d6',
+                11:'6d6',12:'6d6',13:'7d6',14:'7d6',15:'8d6',16:'8d6',17:'9d6',18:'9d6',19:'10d6',20:'10d6'}
+    },
+    expertiseChoices: {
+      label: 'Expertise (double PB)', unlocksAt: 1, type: 'multi', maxCount: 2,
+      note: 'Choose 2 at level 1, 2 more at level 6',
+      options: [
+        {v:'Acrobatics'},{v:'Athletics'},{v:'Deception'},{v:'Insight'},{v:'Intimidation'},
+        {v:'Investigation'},{v:'Perception'},{v:'Performance'},{v:'Persuasion'},
+        {v:'Sleight of Hand'},{v:'Stealth'},{v:'Thieves\' Tools'},
+      ]
+    }
+  },
+  Sorcerer: {
+    sorceryPoints: {
+      label: 'Sorcery Points', unlocksAt: 2, type: 'display',
+      byLevel: 'level'
+    },
+    metamagic: {
+      label: 'Metamagic Options', unlocksAt: 3, type: 'multi',
+      countByLevel: {3:2,10:3,17:4},
+      options: [
+        {v:'Careful Spell',     d:'Spend 1 SP: up to CHA mod creatures auto-succeed on saves against your spell.'},
+        {v:'Distant Spell',     d:'Spend 1 SP: double range of a spell (touch → 30 ft).'},
+        {v:'Empowered Spell',   d:'Spend 1 SP: reroll up to CHA mod damage dice (can combo with other metamagic).'},
+        {v:'Extended Spell',    d:'Spend 1 SP: double the duration of a concentration spell (max 24 hours).'},
+        {v:'Heightened Spell',  d:'Spend 3 SP: one target of a spell has disadvantage on its first save.'},
+        {v:'Quickened Spell',   d:'Spend 2 SP: cast a spell with a 1-action casting time as a bonus action.'},
+        {v:'Subtle Spell',      d:'Spend 1 SP: cast a spell without verbal or somatic components.'},
+        {v:'Transmuted Spell',  d:'Spend 1 SP: change a spell\'s damage type to another from a list.'},
+        {v:'Twinned Spell',     d:'Spend SP = spell level (1 min): target a second creature with a single-target spell.'},
+        {v:'Seeking Spell',     d:'Spend 2 SP: reroll a missed attack roll (once per cast).'},
+      ]
+    }
+  },
+  Wizard: {
+    arcaneRecovery: {
+      label: 'Arcane Recovery', unlocksAt: 1, type: 'display',
+      note: 'Once/day after short rest: recover spell slots totaling ≤ half your wizard level (rounded up). Max 5th level slots.'
+    },
+    spellMastery: {
+      label: 'Spell Mastery (Level 18)', unlocksAt: 18, type: 'multi', maxCount: 2,
+      options: [{v:'Choose a 1st-level spell to cast at will (no slot)'},{v:'Choose a 2nd-level spell to cast at will (no slot)'}]
+    }
+  },
+  Artificer: {
+    infusions: {
+      label: 'Infusions Known', unlocksAt: 2, type: 'multi',
+      countByLevel: {2:4,6:6,10:8,14:10,18:12},
+      options: [
+        {v:'Enhanced Arcane Focus',   d:'Arcane focus: +1 to spell attack/save DC (+2 at 10th level).'},
+        {v:'Enhanced Defense',        d:'Armor or shield: +1 AC (+2 at 10th level).'},
+        {v:'Enhanced Weapon',         d:'Weapon: +1 attack and damage (+2 at 10th level).'},
+        {v:'Returning Weapon',        d:'Thrown weapon: returns to you after being thrown.'},
+        {v:'Repeating Shot',          d:'Ranged weapon: ignore loading, ammunition appears magically, +1 attack/damage.'},
+        {v:'Homunculus Servant',      d:'Create a homunculus servant from a gem (CR 0 companion, carries messages/items).'},
+        {v:'Mind Sharpener',          d:'Spellcasting focus or vest: 4 charges, use to maintain concentration (reaction).'},
+        {v:'Bag of Holding',          d:'Craft a Bag of Holding.'},
+        {v:'Goggles of Night',        d:'Craft Goggles of Night (darkvision 60 ft).'},
+        {v:'Sending Stones',          d:'Craft a matched set of Sending Stones.'},
+        {v:'Boots of the Winding Path',d:'Teleport up to 15 ft to a space you previously occupied (bonus action).'},
+        {v:'Radiant Weapon',          prereq:'6th level', d:'+1d4 radiant damage, shed light, blind on hit (4 charges).'},
+        {v:'Repulsion Shield',        prereq:'6th level', d:'+1 AC on shield; 4 charges, push attacker 15 ft as reaction.'},
+        {v:'Spell-Refueling Ring',    prereq:'6th level', d:'Ring recovers one expended spell slot (3rd level or lower) 1/day.'},
+        {v:'Armor of Magical Strength',prereq:'10th level', d:'+1d4 STR checks/saves; resistance to being knocked prone.'},
+        {v:'Helm of Awareness',       prereq:'10th level', d:'Advantage on initiative. Can\'t be surprised while conscious.'},
+      ]
+    },
+    toolProficiency: {
+      label: 'Tool Proficiency', unlocksAt: 1, type: 'single',
+      options: [
+        {v:"Alchemist's Supplies"},{v:'Brewer\'s Supplies'},{v:'Calligrapher\'s Supplies'},
+        {v:'Carpenter\'s Tools'},{v:'Cartographer\'s Tools'},{v:'Cobbler\'s Tools'},
+        {v:'Cook\'s Utensils'},{v:'Glassblower\'s Tools'},{v:'Jeweler\'s Tools'},
+        {v:'Leatherworker\'s Tools'},{v:'Mason\'s Tools'},{v:'Painter\'s Supplies'},
+        {v:'Potter\'s Tools'},{v:'Smith\'s Tools'},{v:'Tinker\'s Tools'},
+        {v:'Weaver\'s Tools'},{v:'Woodcarver\'s Tools'},
+      ]
+    }
+  },
+};
+
+// Race-specific choices
+const RACE_CHOICES = {
+  'Human (Variant)': {
+    variantStats: {
+      label: '+1 to Two Ability Scores', type: 'multi', maxCount: 2,
+      options: [{v:'STR'},{v:'DEX'},{v:'CON'},{v:'INT'},{v:'WIS'},{v:'CHA'}]
+    },
+    variantFeat: { label: 'Bonus Feat', type: 'text', placeholder: 'e.g. Lucky, Observant, Alert...' }
+  },
+  'Half-Elf': {
+    bonusStats: {
+      label: '+1 to Two Ability Scores', type: 'multi', maxCount: 2,
+      options: [{v:'STR'},{v:'DEX'},{v:'CON'},{v:'INT'},{v:'WIS'}]
+    }
+  },
+  'Tortle': {
+    shellDefense: {
+      label: 'Shell Defense', type: 'display',
+      note: 'Action: retreat into shell. +4 AC, advantage on STR/CON saves. Speed 0, disadvantage on DEX saves, can\'t take reactions. Bonus action to emerge.'
+    },
+    naturalAC: {
+      label: 'Natural Armor', type: 'display',
+      note: 'AC = 17 (natural shell). Unarmored. DEX does NOT add to AC.'
+    }
+  },
+  'Dragonborn': {
+    dragonAncestry: {
+      label: 'Dragon Ancestry', type: 'single',
+      options: [
+        {v:'Black (Acid)',      d:'Breath: 5×30 ft line. Damage: Acid.'},
+        {v:'Blue (Lightning)',  d:'Breath: 5×30 ft line. Damage: Lightning.'},
+        {v:'Brass (Fire)',      d:'Breath: 5×30 ft line. Damage: Fire.'},
+        {v:'Bronze (Lightning)',d:'Breath: 5×30 ft line. Damage: Lightning.'},
+        {v:'Copper (Acid)',     d:'Breath: 5×30 ft line. Damage: Acid.'},
+        {v:'Gold (Fire)',       d:'Breath: 15 ft cone. Damage: Fire.'},
+        {v:'Green (Poison)',    d:'Breath: 15 ft cone. Damage: Poison.'},
+        {v:'Red (Fire)',        d:'Breath: 15 ft cone. Damage: Fire.'},
+        {v:'Silver (Cold)',     d:'Breath: 15 ft cone. Damage: Cold.'},
+        {v:'White (Cold)',      d:'Breath: 15 ft cone. Damage: Cold.'},
+      ]
+    }
+  },
+  'Tiefling': {
+    infernalLegacy: {
+      label: 'Infernal Legacy (innate spells)', type: 'display',
+      note: 'Thaumaturgy cantrip. Hellish Rebuke 1/day (2nd-level) at 3rd level. Darkness 1/day at 5th level.'
+    }
+  },
+  'Aasimar': {
+    subtype: {
+      label: 'Aasimar Subtype', type: 'single',
+      options: [
+        {v:'Protector', d:'Radiant Soul: sprout wings (fly = speed) for 1 min. Radiant/necrotic damage +level 1/rest.'},
+        {v:'Scourge',   d:'Radiant Consumption: blaze of light 10 ft aura (radiant dmg = level/2 to self and enemies) 1/rest.'},
+        {v:'Fallen',    d:'Necrotic Shroud: frightening aura 10 ft (CHA save), necrotic damage +level 1/rest.'},
+      ]
+    }
+  },
+  'Simic Hybrid': {
+    animalEnhancement1: {
+      label: 'Animal Enhancement (Level 1)', type: 'single',
+      options: [
+        {v:'Manta Glide',     d:'Ray-like wings, glide 15 ft/turn, no falling damage.'},
+        {v:'Nimble Climber',  d:'Climb speed = walk speed.'},
+        {v:'Underwater Adaptation',d:'Breathe water and air; swim speed = walk speed.'},
+      ]
+    },
+    animalEnhancement2: {
+      label: 'Animal Enhancement (Level 5)', unlocksAt: 5, type: 'single',
+      options: [
+        {v:'Grappling Appendages',d:'Two tendrils: grapple as bonus action (STR, 10 ft reach). Disadv if both grappling.'},
+        {v:'Carapace',            d:'+1 AC natural armor.'},
+        {v:'Acid Spit',           d:'Ranged weapon attack 30 ft, 2d10 acid, 1/rest.'},
+      ]
+    }
+  },
+  'Warforged': {
+    integratedTool: {
+      label: 'Integrated Tool Proficiency', type: 'single',
+      options: [
+        {v:"Alchemist's Supplies"},{v:'Brewer\'s Supplies'},{v:'Calligrapher\'s Supplies'},
+        {v:'Carpenter\'s Tools'},{v:'Cartographer\'s Tools'},{v:'Cobbler\'s Tools'},
+        {v:'Cook\'s Utensils'},{v:'Glassblower\'s Tools'},{v:'Jeweler\'s Tools'},
+        {v:'Leatherworker\'s Tools'},{v:'Mason\'s Tools'},{v:'Painter\'s Supplies'},
+        {v:'Potter\'s Tools'},{v:'Smith\'s Tools'},{v:'Tinker\'s Tools'},
+        {v:'Weaver\'s Tools'},{v:'Woodcarver\'s Tools'},
+      ]
+    }
+  },
+  'Gnome (Forest)': {
+    smallBeastCommunication: {
+      label: 'Speak with Small Beasts', type: 'display',
+      note: 'Communicate simple ideas to Small or smaller beasts. They cannot speak back in words.'
+    }
+  },
+  'Elf (High)': {
+    wizardCantrip: {
+      label: 'Bonus Wizard Cantrip', type: 'text', placeholder: 'e.g. Prestidigitation, Mending, Ray of Frost...'
+    }
+  },
+  'Fairy': {
+    bonusStats: {
+      label: '+1 to Two Ability Scores', type: 'multi', maxCount: 2,
+      options: [{v:'STR'},{v:'DEX'},{v:'CON'},{v:'INT'},{v:'WIS'},{v:'CHA'}]
+    }
+  },
+  'Harengon': {
+    bonusStats: {
+      label: '+1 to Two Ability Scores', type: 'multi', maxCount: 2,
+      options: [{v:'STR'},{v:'DEX'},{v:'CON'},{v:'INT'},{v:'WIS'},{v:'CHA'}]
+    }
+  },
+  'Owlfolk': {
+    bonusStats: {
+      label: '+1 to Two Ability Scores', type: 'multi', maxCount: 2,
+      options: [{v:'STR'},{v:'DEX'},{v:'CON'},{v:'INT'},{v:'WIS'},{v:'CHA'}]
+    }
+  },
+  'Rabbitfolk': {
+    bonusStats: {
+      label: '+1 to Two Ability Scores', type: 'multi', maxCount: 2,
+      options: [{v:'STR'},{v:'DEX'},{v:'CON'},{v:'INT'},{v:'WIS'},{v:'CHA'}]
+    }
+  },
+};
+
+// Spell count limits per class per level
+const SPELL_KNOWN_LIMITS = {
+  // format: level -> max spells known (cantrips separate)
+  Sorcerer:  { cantrips:[0,4,4,4,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6], spells:[0,2,3,4,5,6,7,8,9,10,11,12,12,13,13,14,14,15,15,15,15] },
+  Bard:      { cantrips:[0,2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4], spells:[0,4,5,6,7,8,9,10,11,12,14,15,15,16,18,19,19,20,22,22,22] },
+  Ranger:    { cantrips:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], spells:[0,0,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11] },
+  Warlock:   { cantrips:[0,2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4], spells:[0,2,3,4,5,6,7,8,9,10,10,11,11,12,12,13,13,14,14,15,15] },
+  // Prepared casters (Cleric/Druid/Paladin/Wizard): prepared = ability mod + level (not "known"), no hard list
+  // Full prepared: mark as 'prepared'
+  Cleric:    'prepared', Druid: 'prepared', Paladin: 'prepared', Wizard: 'prepared',
+  Artificer: 'prepared', Fighter: null, Rogue: null, Barbarian: null, Monk: null,
+};
+
+// Module-level storage for choices
+let charChoices = {};
+
+/* =============================================================================
+   CHOICES PANEL RENDERER
+============================================================================= */
+function renderChoicesPanel() {
+  const el = document.getElementById('choices-content');
+  if (!el) return;
+  const cls   = document.getElementById('c-class')?.value   || '';
+  const race  = document.getElementById('c-race')?.value    || '';
+  const sub   = document.getElementById('c-subclass')?.value || '';
+  const lvl   = parseInt(document.getElementById('c-level')?.value) || 1;
+
+  let html = '';
+
+  // ── RACE CHOICES ──────────────────────────────────────────────────────────
+  const raceChoiceDefs = RACE_CHOICES[race];
+  if (raceChoiceDefs) {
+    html += `<div class="section-h">🧬 ${race} Racial Choices</div>`;
+    for (const [key, def] of Object.entries(raceChoiceDefs)) {
+      if (def.unlocksAt && lvl < def.unlocksAt) continue;
+      html += buildChoiceBlock('race_' + key, def, lvl);
+    }
+  }
+
+  // ── CLASS CHOICES ─────────────────────────────────────────────────────────
+  const classChoiceDefs = CLASS_CHOICES[cls];
+  if (classChoiceDefs) {
+    html += `<div class="section-h">⚔ ${cls} Class Choices</div>`;
+    for (const [key, def] of Object.entries(classChoiceDefs)) {
+      if (def.unlocksAt && lvl < def.unlocksAt) continue;
+      html += buildChoiceBlock('class_' + key, def, lvl);
+    }
+  }
+
+  // ── SUBCLASS FEATURES ─────────────────────────────────────────────────────
+  if (sub) {
+    const subFeatures = SUBCLASS_FEATURES[sub];
+    if (subFeatures) {
+      html += `<div class="section-h">✨ ${sub} Features</div>`;
+      html += `<div style="font-size:.82rem;line-height:1.6;color:rgba(240,230,200,.75)">`;
+      for (const [feat, desc] of Object.entries(subFeatures)) {
+        html += `<div style="margin-bottom:6px"><span style="font-family:'Cinzel',serif;color:var(--gold);font-size:.85rem">${feat}</span><br><span class="muted">${desc}</span></div>`;
+      }
+      html += '</div>';
+    }
+  }
+
+  // ── SPELL LIMITS INFO ─────────────────────────────────────────────────────
+  if (cls) {
+    const lim = SPELL_KNOWN_LIMITS[cls];
+    if (lim && lim !== 'prepared') {
+      const maxCantrips = lim.cantrips[Math.min(lvl,20)];
+      const maxSpells   = lim.spells[Math.min(lvl,20)];
+      const curCantrips = (customSpells||[]).filter(s=>s.level===0).length;
+      const curSpells   = (customSpells||[]).filter(s=>s.level>0).length;
+      html += `<div class="section-h">📖 Spells Known Limits</div>`;
+      html += `<div style="font-size:.84rem;line-height:1.8;color:rgba(240,230,200,.8)">
+        <div>Cantrips: <span style="color:${curCantrips>maxCantrips?'#c04040':'var(--gold)'}">${curCantrips}/${maxCantrips}</span></div>
+        <div>Spells: <span style="color:${curSpells>maxSpells?'#c04040':'var(--gold)'}">${curSpells}/${maxSpells}</span></div>
+        ${curCantrips>maxCantrips?'<div style="color:#c06060">⚠ Too many cantrips for this level!</div>':''}
+        ${curSpells>maxSpells?'<div style="color:#c06060">⚠ Too many spells known for this level!</div>':''}
+      </div>`;
+    } else if (lim === 'prepared') {
+      const ab = CLASS_DATA[cls]?.spellAb;
+      const scores = getScores ? getScores() : {};
+      const mod = ab ? Math.floor(((parseInt(scores[ab])||10)-10)/2) : 0;
+      const isHalf = CLASS_DATA[cls]?.isHalf;
+      const effLvl = isHalf ? Math.floor(lvl/2) : lvl;
+      const prepared = mod + effLvl;
+      html += `<div class="section-h">📖 Prepared Spells</div>`;
+      html += `<div style="font-size:.84rem;color:rgba(240,230,200,.8)">Prepared spells: <span style="color:var(--gold)">${Math.max(1,prepared)}</span> (${ab} mod ${mod>=0?'+':''}${mod} + ${isHalf?'half-':''}level ${effLvl})</div>`;
+    }
+  }
+
+  if (!html) html = '<div class="muted">Select a race and class to see available choices.</div>';
+  el.innerHTML = html;
+
+  // Restore saved choice values
+  restoreChoiceValues();
+}
+
+function buildChoiceBlock(key, def, lvl) {
+  const val = charChoices[key];
+  if (def.type === 'display') {
+    return `<div style="margin-bottom:12px">
+      <div style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold2);margin-bottom:3px">${def.label}</div>
+      <div style="font-size:.82rem;color:rgba(240,230,200,.7);line-height:1.4">${def.note||def.d||''}</div>
+    </div>`;
+  }
+  if (def.type === 'text') {
+    return `<div style="margin-bottom:12px">
+      <label style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold2)">${def.label}</label>
+      <input type="text" id="choice-${key}" placeholder="${def.placeholder||''}" value="${val||''}"
+        style="margin:0" onchange="charChoices['${key}']=this.value">
+    </div>`;
+  }
+  if (def.type === 'single') {
+    const opts = def.options.map(o=>`<option value="${o.v}" ${val===o.v?'selected':''}>${o.v}</option>`).join('');
+    const selOpt = def.options.find(o=>o.v===val);
+    return `<div style="margin-bottom:12px">
+      <label style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold2)">${def.label}${def.unlocksAt?` <span style="font-size:.68rem;color:var(--parch2)">(unlocks lv${def.unlocksAt})</span>`:''}</label>
+      <select id="choice-${key}" onchange="charChoices['${key}']=this.value;renderChoicesPanel()" style="margin:0">
+        <option value="">— Choose —</option>${opts}
+      </select>
+      ${selOpt?.d ? `<div style="font-size:.78rem;color:rgba(240,230,200,.6);margin-top:3px">${selOpt.d}</div>` : ''}
+    </div>`;
+  }
+  if (def.type === 'multi') {
+    // Determine count allowed at this level
+    let maxCount = def.maxCount || 99;
+    if (def.countByLevel) {
+      const levels = Object.keys(def.countByLevel).map(Number).sort((a,b)=>a-b);
+      for (const l of levels) { if (lvl >= l) maxCount = def.countByLevel[l]; }
+    }
+    const selected = Array.isArray(val) ? val : [];
+    const opts = def.options.map(o => {
+      const checked = selected.includes(o.v);
+      const disabled = !checked && selected.length >= maxCount;
+      return `<label style="display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;cursor:${disabled?'not-allowed':'pointer'};opacity:${disabled?.5:1}">
+        <input type="checkbox" value="${o.v}" ${checked?'checked':''} ${disabled?'disabled':''}
+          style="width:auto;margin:4px 0 0" onchange="toggleChoiceMulti('${key}',this.value,this.checked,${maxCount});renderChoicesPanel()">
+        <span style="font-size:.82rem"><b style="color:var(--parch)">${o.v}</b>${o.d?'<br><span style="color:rgba(240,230,200,.6);font-size:.78rem">'+o.d+'</span>':''}</span>
+      </label>`;
+    }).join('');
+    return `<div style="margin-bottom:14px">
+      <div style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold2);margin-bottom:4px">${def.label}
+        <span style="font-size:.72rem;color:var(--parch2)"> — ${selected.length}/${maxCount} selected${def.unlocksAt?` (unlocks lv${def.unlocksAt})`:''}</span>
+      </div>
+      ${def.note?`<div style="font-size:.75rem;color:var(--parch2);margin-bottom:6px">${def.note}</div>`:''}
+      <div style="max-height:200px;overflow-y:auto;padding:4px 0">${opts}</div>
+    </div>`;
+  }
+  return '';
+}
+
+function toggleChoiceMulti(key, val, checked, max) {
+  let arr = Array.isArray(charChoices[key]) ? [...charChoices[key]] : [];
+  if (checked) { if (arr.length < max) arr.push(val); }
+  else { arr = arr.filter(v => v !== val); }
+  charChoices[key] = arr;
+}
+
+function restoreChoiceValues() {
+  // Re-apply charChoices to inputs that may have been re-rendered
+  for (const [key, val] of Object.entries(charChoices)) {
+    const el = document.getElementById('choice-' + key);
+    if (!el) continue;
+    if (el.tagName === 'SELECT') el.value = val;
+    else if (el.tagName === 'INPUT') el.value = val;
+  }
+}
+
+// Subclass features lookup (compact)
+const SUBCLASS_FEATURES = {
+  'The Fathomless': {
+    'Gift of the Sea':      'Swim speed 40 ft and water breathing.',
+    'Tentacle of the Deep': 'Bonus action: summon spectral tentacle (10 ft reach, 1d8 cold, speed reduction on hit). 1 min duration, free 1/day. CHA mod saves.',
+    'Guardian Coil':        'Reaction when you or a creature within 10 ft of your tentacle takes damage: reduce damage by 1d8.',
+    'Oceanic Soul':         'Resistance to cold damage. Understand and be understood by aquatic creatures.',
+    'Monster of the Deep':  'Tentacle grows to 20 ft reach; 2d8 cold damage; can teleport to unoccupied space within 30 ft as part of tentacle attack.',
+    'Grasping Tentacles':   'Know Evard\'s Black Tentacles, which doesn\'t count against spells known. Casting it grants temp HP = your warlock level + CHA mod.',
+    'Fathomless Plunge':    'Action: teleport yourself and up to 5 willing creatures up to 1 mile to a water body you\'ve been to.',
+  },
+  'The Fiend': {
+    'Expanded Spell List':  'Burning Hands/Command, Blindness/Scorching Ray, Fireball/Stinking Cloud, Fire Shield/Wall of Fire, Flame Strike/Hallow.',
+    'Dark One\'s Blessing': 'When you reduce a hostile creature to 0 HP, gain temp HP = CHA mod + warlock level.',
+    'Dark One\'s Own Luck': 'Add a d10 to one ability check or saving throw 1/rest.',
+    'Fiendish Resilience':  'Choose one damage type between rests. Gain resistance to it (not from weapons).',
+    'Hurl Through Hell':    '1/long rest: if hit a creature, send it through lower planes — 10d10 psychic on return, frightened 1 min (WIS save).',
+  },
+  'The Great Old One': {
+    'Expanded Spell List':  'Dissonant Whispers/Tasha\'s Hideous Laughter, Detect Thoughts/Phantasmal Force, Clairvoyance/Sending, Dominate Beast/Evard\'s Black Tentacles, Dominate Person/Telekinesis.',
+    'Awakened Mind':        'Telepathic communication with creatures you can see within 30 ft. No shared language needed.',
+    'Entropic Ward':        'Reaction: impose disadvantage on attack against you. Miss: advantage on your next attack vs that creature 1/rest.',
+    'Thought Shield':       'Resistance to psychic damage. Creatures can\'t read your thoughts (except you allow). Psychic damage shared back to attacker.',
+    'Create Thrall':        'Touch an incapacitated humanoid. It becomes charmed and telepathically linked to you.',
+  },
+  'The Archfey': {
+    'Fey Presence':         'Action: charm or frighten all creatures in 10 ft cube until end of next turn (WIS save) 1/rest.',
+    'Misty Escape':         'Reaction when damaged: turn invisible and teleport up to 60 ft. Invisibility ends on attack/spell 1/rest.',
+    'Beguiling Defenses':   'Immune to charm. When a creature tries to charm you: reflect it back (WIS save or charmed by you for 1 min).',
+    'Dark Delirium':        'Charm or frighten a creature for 1 min (WIS save, repeat on damage) 1/rest.',
+  },
+  'The Hexblade': {
+    'Expanded Spell List':  'Shield/Wrathful Smite, Blur/Branding Smite, Blink/Elemental Weapon, Phantasmal Killer/Staggering Smite, Banishing Smite/Cone of Cold.',
+    'Hexblade\'s Curse':    'Bonus action: curse one creature for 1 min. +PB to damage; crit on 19-20; regain HP = level+CHA on kill. 1/rest.',
+    'Hex Warrior':          'Proficiency with medium armor, shields, and martial weapons. Choose one weapon: use CHA for attack/damage.',
+    'Accursed Specter':     '1/long rest: on kill, raise a specter from the corpse. Under your command until long rest.',
+    'Armor of Hexes':       'If cursed target hits you: 50% chance the hit misses (roll d6 on 4+).',
+    'Master of Hexes':      'Move your Hexblade\'s Curse to a new target when cursed creature dies (no use of feature).',
+  },
+  'Draconic Bloodline': {
+    'Dragon Ancestor':      'Choose a dragon type (determines damage resistance and breath weapon type).',
+    'Draconic Resilience':  'Max HP increases by 1 per sorcerer level. Unarmored AC = 13 + DEX modifier.',
+    'Elemental Affinity':   'When you cast a spell dealing your ancestry\'s damage type, add CHA mod to one roll. Spend 1 sorcery point for 1-hour resistance.',
+    'Dragon Wings':         'Grow a pair of dragon wings, gaining fly speed = walk speed.',
+    'Draconic Presence':    'Spend 5 sorcery points: aura of awe or fear 60 ft (WIS save) for 1 min.',
+  },
+  'Wild Magic': {
+    'Wild Magic Surge':     'DM can have you roll a d20 after you cast a spell of 1st level or higher. On a 1, roll on Wild Magic Surge table.',
+    'Tides of Chaos':       'Gain advantage on one attack, check, or save. DM may trigger Wild Magic Surge. Recharge on long rest or triggered surge.',
+    'Bend Luck':            'Spend 2 sorcery points (reaction): add or subtract 1d4 from any creature\'s attack roll, ability check, or saving throw.',
+    'Controlled Chaos':     'Roll twice on the Wild Magic Surge table and choose either result.',
+    'Spell Bombardment':    'When you roll highest number on a spell damage die, roll it again and add to total (once per cast).',
+  },
+  'School of Evocation': {
+    'Sculpt Spells':        'When you cast an evocation spell, choose a number of creatures equal to 1 + spell level to auto-succeed saves and take no damage.',
+    'Potent Cantrip':       'When a creature succeeds on a save against your damaging cantrip, it still takes half damage.',
+    'Empowered Evocation':  'Add INT modifier to damage rolls of wizard evocation spells.',
+    'Overchannel':          'Max damage on any wizard spell of 5th level or lower. Constitution save for each spell beyond first (1d12 necrotic per spell level).',
+  },
+  'Life Domain': {
+    'Bonus Proficiency':    'Heavy armor proficiency.',
+    'Disciple of Life':     'Healing spells restore extra HP = 2 + spell\'s level.',
+    'Channel Divinity: Preserve Life': 'Restore HP totaling 5× cleric level among creatures within 30 ft (can\'t exceed half HP max).',
+    'Blessed Healer':       'When you cast a healing spell on another creature, you regain 2+spell level HP.',
+    'Divine Strike':        '+1d8 radiant damage on weapon attacks once per turn (+2d8 at 14th level).',
+    'Supreme Healing':      'Roll maximum on healing spell dice instead of rolling.',
+  },
+  'Champion': {
+    'Improved Critical':    'Crit on 19-20 (18-20 at level 15).',
+    'Remarkable Athlete':   'Add half proficiency bonus (rounded up) to STR/DEX/CON checks that don\'t already add proficiency.',
+    'Additional Fighting Style': 'Choose a second fighting style.',
+    'Superior Critical':    'Crit on 18-20.',
+    'Survivor':             'Regain 5+CON mod HP at start of your turn if between 1-half HP. Works even if incapacitated.',
+  },
+  'Thief': {
+    'Fast Hands':           'Bonus action: Sleight of Hand check, use thieves\' tools to disarm a trap or open a lock, or take the Use an Object action.',
+    'Second-Story Work':    'Climbing no longer costs extra movement. Running jump distance increases by DEX modifier feet.',
+    'Supreme Sneak':        'Advantage on Stealth checks if you move no more than half speed.',
+    'Use Magic Device':     'Ignore all class, race, and level requirements on magic items.',
+    'Thief\'s Reflexes':    'Take two turns in the first round of any combat (second turn at initiative -10).',
+  },
+  'Path of the Berserker': {
+    'Frenzy':               'While raging, bonus action to make a melee weapon attack. 1 level of exhaustion at end of rage.',
+    'Mindless Rage':        'Can\'t be charmed or frightened while raging. If already, effect is suspended during rage.',
+    'Intimidating Presence':'Action: frighten one creature within 30 ft (WIS save, repeat on damage) until end of next turn.',
+    'Retaliation':          'Reaction when you take damage from a creature within 5 ft: make a melee weapon attack against it.',
+  },
+  'Way of the Open Hand': {
+    'Open Hand Technique':  'When you hit with Flurry of Blows, choose one: knock prone (DEX save), push 15 ft (STR save), or prevent reactions until end of next turn.',
+    'Wholeness of Body':    'Regain HP = 3× monk level as action, 1/long rest.',
+    'Tranquility':          'At end of long rest, gain Sanctuary effect (WIS save to attack) until next long rest or you attack.',
+    'Quivering Palm':       'Spend 3 ki: set vibrations in a hit creature. As action within 1 month: 10d10 necrotic (CON save for half) or 0 HP.',
+  },
+  'Hunter': {
+    'Hunter\'s Prey':       'Choose: Colossus Slayer (+1d8 on injured targets), Giant Killer (reaction attack on miss vs Large+), or Horde Breaker (extra attack on adjacent enemy).',
+    'Defensive Tactics':    'Choose: Escape the Horde (no OA), Multiattack Defense (+4 AC after being hit), or Steel Will (adv vs frightened).',
+    'Multiattack':          'Choose: Volley (ranged attack all creatures in 10 ft radius) or Whirlwind Attack (melee attack all creatures within 5 ft).',
+    'Superior Hunter\'s Defense': 'Choose: Evasion (DEX save spells: no damage on success, half on fail), Stand Against the Tide (redirect missed melee attack to adjacent creature), or Uncanny Dodge (reaction: halve an attacker\'s damage).',
+  },
+};
+
+// Hook choices into save/load
+const _origCollectCharData = collectCharData;
+function collectCharData() {
+  const c = _origCollectCharData();
+  c.charChoices = JSON.parse(JSON.stringify(charChoices));
+  return c;
+}
+const _origLoadCharForEdit = loadCharacterForEdit;
+function loadCharacterForEdit(c) {
+  _origLoadCharForEdit(c);
+  charChoices = c.charChoices ? JSON.parse(JSON.stringify(c.charChoices)) : {};
+}
+
+
 
 /* =============================================================================
    SPELL DATABASE

@@ -2601,6 +2601,7 @@ function loadCharIntoForm(c) {
   spellSlots       = c.spellSlots      ? JSON.parse(JSON.stringify(c.spellSlots))      : {};
   activeConditions = c.activeConditions ? [...c.activeConditions] : [];
   const concEl = document.getElementById('c-concentration'); if (concEl) concEl.value = c.concentration || '';
+  charChoices = c.charChoices ? JSON.parse(JSON.stringify(c.charChoices)) : {};
 
   renderMcList();
 }
@@ -2650,7 +2651,8 @@ function collectCharData() {
     attacks: attackList, customFeatures, feats: selectedFeats, mcClasses,
     deathSuccesses, deathFailures, spellSlots,
     concentration: gv('c-concentration'),
-    activeConditions: activeConditions ? [...activeConditions] : []
+    activeConditions: activeConditions ? [...activeConditions] : [],
+    charChoices: JSON.parse(JSON.stringify(charChoices || {}))
   };
 }
 
@@ -6445,20 +6447,6 @@ const SUBCLASS_FEATURES = {
     'Superior Hunter\'s Defense': 'Choose: Evasion (DEX save spells: no damage on success, half on fail), Stand Against the Tide (redirect missed melee attack to adjacent creature), or Uncanny Dodge (reaction: halve an attacker\'s damage).',
   },
 };
-
-// Hook choices into save/load
-const _origCollectCharData = collectCharData;
-function collectCharData() {
-  const c = _origCollectCharData();
-  c.charChoices = JSON.parse(JSON.stringify(charChoices));
-  return c;
-}
-const _origLoadCharForEdit = loadCharacterForEdit;
-function loadCharacterForEdit(c) {
-  _origLoadCharForEdit(c);
-  charChoices = c.charChoices ? JSON.parse(JSON.stringify(c.charChoices)) : {};
-}
-
 
 
 /* =============================================================================

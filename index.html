@@ -4663,6 +4663,69 @@ function viewCharacter(id) {
     </div>
   </div>` : ''}
 
+  <!-- ── CLASS & RACE CHOICES ── -->
+  ${(() => {
+    const ch = c.charChoices || {};
+    if (!Object.keys(ch).length) return '';
+    const cls   = c.cls   || '';
+    const race  = c.race  || '';
+    const sub   = c.subclass || '';
+    const lvl   = c.level || 1;
+    let rows = '';
+
+    // Helper: render a choice entry
+    const row = (label, val) => {
+      if (!val || (Array.isArray(val) && !val.length)) return '';
+      const display = Array.isArray(val) ? val.join(', ') : val;
+      return `<div style="margin-bottom:5px"><span class="feature-name">${label}:</span> ${display}</div>`;
+    };
+
+    // Class choices
+    const ccd = CLASS_CHOICES[cls];
+    if (ccd) {
+      for (const [key, def] of Object.entries(ccd)) {
+        const val = ch['class_' + key];
+        if (!val || (Array.isArray(val) && !val.length)) continue;
+        if (def.unlocksAt && lvl < def.unlocksAt) continue;
+        if (def.type === 'display') continue;
+        // For invocations show each with description
+        if (def.type === 'multi' && key === 'invocations' && Array.isArray(val)) {
+          rows += `<div style="margin-bottom:5px"><span class="feature-name">${def.label}:</span><ul style="margin:3px 0 0 16px">`;
+          val.forEach(inv => {
+            const opt = def.options.find(o => o.v === inv);
+            rows += `<li style="font-size:.84rem">${inv}${opt?.d ? ' — <span style="color:#555">' + opt.d + '</span>' : ''}</li>`;
+          });
+          rows += '</ul></div>';
+        } else {
+          rows += row(def.label, val);
+        }
+      }
+    }
+
+    // Race choices
+    const rcd = RACE_CHOICES[race];
+    if (rcd) {
+      for (const [key, def] of Object.entries(rcd)) {
+        const val = ch['race_' + key];
+        if (!val || (Array.isArray(val) && !val.length)) continue;
+        if (def.type === 'display') continue;
+        rows += row(def.label, val);
+      }
+    }
+
+    // Subclass features block
+    const sf = SUBCLASS_FEATURES[sub];
+    if (sf && sub) {
+      rows += `<div style="margin-bottom:5px;margin-top:8px"><span class="feature-name" style="font-size:.88rem">${sub} Features:</span><ul style="margin:3px 0 0 16px">`;
+      for (const [feat, desc] of Object.entries(sf)) {
+        rows += `<li style="font-size:.82rem;margin-bottom:3px"><strong>${feat}:</strong> <span style="color:#555">${desc}</span></li>`;
+      }
+      rows += '</ul></div>';
+    }
+
+    return rows ? `<div class="full sec"><h2>Class &amp; Race Choices</h2>${rows}</div>` : '';
+  })()}
+
   <!-- ── FEATURES ── -->
   ${c.customFeatures?.length ? `<div class="full sec">
     <h2>Features & Traits</h2>

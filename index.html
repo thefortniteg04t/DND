@@ -412,6 +412,10 @@ textarea { resize: vertical; min-height: 80px; }
 ::-webkit-scrollbar       { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: var(--dark); }
 ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 3px; }
+/* COMPENDIUM */
+.comp-card { transition: border-color .15s; }
+.comp-card:hover { border-color: rgba(201,168,76,.4) !important; }
+.comp-card-head:hover { background: rgba(201,168,76,.04); }
 </style>
 </head>
 <body>
@@ -475,6 +479,7 @@ textarea { resize: vertical; min-height: 80px; }
       <button class="nav-link" onclick="showSection('dice');closeNav()">Dice Roller</button>
       <button class="nav-link" onclick="showSection('campaigns');closeNav()">Campaigns</button>
       <button class="nav-link" onclick="showSection('reference');closeNav()">Reference</button>
+      <button class="nav-link" onclick="showSection('compendium');closeNav()">📚 Compendium</button>
       <button class="nav-link" onclick="showSection('dmtools');closeNav()">⚔ DM Tools</button>
     </nav>
     <div class="nav-right">
@@ -758,6 +763,43 @@ textarea { resize: vertical; min-height: 80px; }
     </div>
   </div>
 
+  <!-- ── COMPENDIUM ── -->
+  <div id="section-compendium" class="main" style="display:none">
+    <div class="page-title">📚 Compendium</div>
+    <div class="page-subtitle">Everything you need to build and understand your character</div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;background:var(--dark2);border:1px solid rgba(201,168,76,.3);padding:12px 16px">
+      <span style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold2)">Preview at Level:</span>
+      <select id="comp-level" style="margin:0;width:70px" onchange="renderCompendium()">
+        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+        <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+        <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+        <option value="13">13</option><option value="14">14</option><option value="15">15</option>
+        <option value="16">16</option><option value="17">17</option><option value="18">18</option>
+        <option value="19">19</option><option value="20">20</option>
+      </select>
+      <span style="font-size:.78rem;color:var(--parch2);font-style:italic">Changes class features, spell slots, proficiency bonus, and subclass unlock indicators across all entries.</span>
+    </div>
+    <div class="tab-bar" id="comp-tabs" style="margin-bottom:18px">
+      <button class="tab-btn active" onclick="compTab('classes',this)">⚔ Classes</button>
+      <button class="tab-btn" onclick="compTab('subclasses',this)">🎯 Subclasses</button>
+      <button class="tab-btn" onclick="compTab('races',this)">🧬 Races</button>
+      <button class="tab-btn" onclick="compTab('subraces',this)">🌿 Subraces</button>
+      <button class="tab-btn" onclick="compTab('backgrounds',this)">📜 Backgrounds</button>
+      <button class="tab-btn" onclick="compTab('feats',this)">⭐ Feats</button>
+      <button class="tab-btn" onclick="compTab('spells',this)">✨ Spells</button>
+      <button class="tab-btn" onclick="compTab('weapons',this)">🗡 Weapons</button>
+      <button class="tab-btn" onclick="compTab('armor',this)">🛡 Armor</button>
+      <button class="tab-btn" onclick="compTab('invocations',this)">🔮 Invocations</button>
+      <button class="tab-btn" onclick="compTab('conditions',this)">⚠ Conditions</button>
+      <button class="tab-btn" onclick="compTab('proficiencies',this)">📋 Proficiencies</button>
+    </div>
+    <div style="margin-bottom:14px">
+      <input type="text" id="comp-search" placeholder="Search by name or keyword..." style="margin:0;width:100%" oninput="renderCompendium()">
+    </div>
+    <div id="comp-content"></div>
+  </div>
+
   <!-- ── REFERENCE ── -->
   <div id="section-reference" class="main" style="display:none">
     <div class="page-title">Quick Reference</div>
@@ -1033,11 +1075,10 @@ textarea { resize: vertical; min-height: 80px; }
         <label style="margin:0;display:inline">Inspiration:</label>
         <div class="inspiration-pip" id="insp-pip" onclick="toggleInspiration()">★</div>
         <label style="margin:0;display:inline">Exhaustion Level:</label>
-        <select id="c-exhaustion" style="width:80px;margin:0" onchange="updateExhaustionDisplay()">
+        <select id="c-exhaustion" style="width:80px;margin:0">
           <option value="0">0</option><option value="1">1</option><option value="2">2</option>
           <option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
         </select>
-        <span id="exhaustion-effect" style="font-size:.75rem;color:var(--parch2);margin-left:4px;font-style:italic"></span>
       </div>
       <div class="section-h">Death Saving Throws</div>
       <div style="display:flex;gap:20px;flex-wrap:wrap">
@@ -3217,12 +3258,12 @@ function initFirebase() {
 
 // ── User auth (stored in Firebase /users/) ──────────────────────────────────
 async function getUsers() {
-  if (!db) return safeParseJSON(localStorage.getItem('tl_users'), {});
+  if (!db) return JSON.parse(localStorage.getItem('tl_users') || '{}');
   try {
     const snap = await db.ref('users').get();
     return snap.exists() ? snap.val() : {};
   } catch(e) {
-    return safeParseJSON(localStorage.getItem('tl_users'), {});
+    return JSON.parse(localStorage.getItem('tl_users') || '{}');
   }
 }
 async function saveUsers(u) {
@@ -3234,8 +3275,8 @@ async function saveUsers(u) {
 
 // ── Per-user character + campaign data ─────────────────────────────────────
 function getUserData() {
-// Return normalized local cache immediately (Firebase updates it in background)
-  return normalizeUserData(safeParseJSON(localStorage.getItem('tl_data_' + currentUser), null));
+  // Return local cache immediately (Firebase updates it in background)
+  return JSON.parse(localStorage.getItem('tl_data_' + currentUser) || '{"characters":[],"campaigns":[]}');
 }
 async function saveUserData(d) {
   localStorage.setItem('tl_data_' + currentUser, JSON.stringify(d));
@@ -3262,21 +3303,6 @@ function startFirebaseSync() {
 function sanitizeKey(str) {
   return (str || 'guest').replace(/[.#$\[\]]/g, '_');
 }
-function safeParseJSON(raw, fallback) {
-  try {
-    if (!raw) return fallback;
-    return JSON.parse(raw);
-  } catch {
-    return fallback;
-  }
-}
-
-function normalizeUserData(data) {
-  const base = (data && typeof data === 'object') ? data : {};
-  if (!Array.isArray(base.characters)) base.characters = [];
-  if (!Array.isArray(base.campaigns))  base.campaigns  = [];
-  return base;
-}
 
 // ── Load user data from Firebase on login (merge with local) ───────────────
 async function loadUserDataFromFirebase() {
@@ -3285,9 +3311,9 @@ async function loadUserDataFromFirebase() {
   try {
     const snap = await db.ref('userData/' + key).get();
     if (snap.exists()) {
-      const remote = normalizeUserData(snap.val());
+      const remote = snap.val();
       // Merge: prefer remote, but keep any local chars not yet synced
-      const local  = normalizeUserData(safeParseJSON(localStorage.getItem('tl_data_' + currentUser), null));
+      const local  = JSON.parse(localStorage.getItem('tl_data_' + currentUser) || '{"characters":[],"campaigns":[]}');
       const remoteIds = new Set((remote.characters||[]).map(c=>c.id));
       const localOnly = (local.characters||[]).filter(c => !remoteIds.has(c.id));
       if (localOnly.length) {
@@ -3369,11 +3395,6 @@ async function doRegister() {
 
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 
-// Ensure inline onclick handlers always resolve in browser global scope
-if (typeof window !== 'undefined') {
-  Object.assign(window, { switchAuthTab, doLogin, doGuest, doRegister });
-}
-   
 function transitionToApp() {
   sessionStorage.setItem('tl_session_user', currentUser);
   const auth = document.getElementById('auth-page');
@@ -3414,12 +3435,13 @@ function startApp() {
    NAVIGATION
 ============================================================================= */
 function showSection(s) {
-  ['characters','dice','campaigns','reference','dmtools'].forEach(id => {
+  ['characters','dice','campaigns','reference','compendium','dmtools'].forEach(id => {
     document.getElementById('section-' + id).style.display = id === s ? 'block' : 'none';
   });
-  if (s === 'dmtools') { refreshPartyView(); }
+  if (s === 'dmtools')    { refreshPartyView(); }
+  if (s === 'compendium') { renderCompendium(); }
   document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
-  const map = {characters:0, dice:1, campaigns:2, reference:3};
+  const map = {characters:0, dice:1, campaigns:2, reference:3, compendium:4};
   const links = document.querySelectorAll('.nav-link');
   if (links[map[s]]) links[map[s]].classList.add('active');
 }
@@ -3511,12 +3533,6 @@ function getScores() {
     const racial = getRacialBonusMap()[a] || 0;
     s[a] = base + racial;
   });
-  // Apply class feature stat bonuses (e.g. Barbarian lv20 Primal Champion)
-  const cls = document.getElementById('c-class')?.value;
-  const lvl = parseInt(document.getElementById('c-level')?.value) || 1;
-  if (cls === 'Barbarian' && lvl >= 20) { s.STR = (s.STR || 10) + 4; s.CON = (s.CON || 10) + 4; }
-  // Cap all scores at 30 (absolute max per rules, though normally 20 for PCs)
-  ABILITIES.forEach(a => { if (s[a] > 30) s[a] = 30; });
   return s;
 }
 
@@ -3695,7 +3711,6 @@ function loadCharIntoForm(c) {
   sv('c-extra-traits',c.extraTraits); sv('c-notes',c.notes);    sv('c-quests',c.quests);
   sv('c-treasure',c.treasure);   sv('c-spell-ability',c.spellAbility);
   sv('c-languages',c.languages); sv('c-profs',c.profs);         sv('c-exhaustion',c.exhaustion || 0);
-  updateExhaustionDisplay();
 
   if (c.armorProfs) {
     ['light','medium','heavy','shield'].forEach(t => {
@@ -4296,56 +4311,15 @@ function longRest() {
 /* =============================================================================
    SPELL SLOTS
 ============================================================================= */
-// Multiclass spell slot table (PHB p.165): indexed by combined caster level 1-20
-// Full caster = full level, Half caster = floor(level/2), Third caster = floor(level/3)
-const MC_SPELL_SLOTS = {
-  1:[2],        2:[3],        3:[4,2],      4:[4,3],      5:[4,3,2],
-  6:[4,3,3],    7:[4,3,3,1],  8:[4,3,3,2],  9:[4,3,3,3,1],10:[4,3,3,3,2],
-  11:[4,3,3,3,2,1],12:[4,3,3,3,2,1],13:[4,3,3,3,2,1,1],14:[4,3,3,3,2,1,1],
-  15:[4,3,3,3,2,1,1,1],16:[4,3,3,3,2,1,1,1],17:[4,3,3,3,2,1,1,1,1],
-  18:[4,3,3,3,3,1,1,1,1],19:[4,3,3,3,3,2,1,1,1],20:[4,3,3,3,3,2,2,1,1]
-};
-
-function getCasterContribution(cls, subclass, level) {
-  // Returns the effective spellcaster level contribution for multiclass slot calc
-  const sub = subclass || '';
-  if (sub === 'Eldritch Knight' || sub === 'Arcane Trickster') return Math.floor(level / 3);
-  const type = CLASS_CASTER_TYPE[cls];
-  if (!type || type === 'pact') return 0; // Warlock uses pact magic separately
-  if (type === 'full')  return level;
-  if (type === 'half')  return Math.floor(level / 2);
-  if (type === 'third') return Math.floor(level / 3);
-  return 0;
-}
-
 function buildSpellSlotUI(c) {
-  const lvl    = parseInt(document.getElementById('c-level')?.value) || 1;
-  const cls    = document.getElementById('c-class')?.value;
-  const sub    = document.getElementById('c-subclass')?.value || '';
-  const cd     = CLASS_DATA[cls];
-  const el     = document.getElementById('spell-slots-ui');
+  const lvl = parseInt(document.getElementById('c-level')?.value) || 1;
+  const cls = document.getElementById('c-class')?.value;
+  const cd  = CLASS_DATA[cls];
+  const el  = document.getElementById('spell-slots-ui');
   if (!el) return;
+  if (!cd || !cd.spellAb) { el.innerHTML = '<span class="muted">No spellcasting for selected class.</span>'; return; }
 
-  // Check if any class (primary or multiclass) has spellcasting
-  const hasSpell   = cd && cd.spellAb;
-  const isPact     = cd && cd.isPact;
-  const mcHasSpell = (mcClasses || []).some(mc => mc.cls && CLASS_DATA[mc.cls]?.spellAb);
-
-  if (!hasSpell && !mcHasSpell) {
-    el.innerHTML = '<span class="muted">No spellcasting for selected class.</span>';
-    return;
-  }
-
-  // --- Pact magic (primary Warlock with no other spellcasting multiclass) ---
-  const mcHasNonPact = (mcClasses || []).some(mc => {
-    if (!mc.cls) return false;
-    const mcd = CLASS_DATA[mc.cls];
-    return mcd && mcd.spellAb && !mcd.isPact;
-  });
-  const primaryNonPact = hasSpell && !isPact;
-
-  if (isPact && !mcHasNonPact && !primaryNonPact) {
-    // Pure Warlock — pact slots only
+  if (cd.isPact) {
     const numSlots = WARLOCK_SLOTS[Math.min(lvl,20)] || [0];
     const slotLvl  = WARLOCK_SLOT_LEVEL[Math.min(lvl,20)] || 1;
     const used     = spellSlots[1]?.used || 0;
@@ -4358,34 +4332,11 @@ function buildSpellSlotUI(c) {
     return;
   }
 
-  // --- Combined multiclass spell slot calculation ---
-  let combinedLevel = getCasterContribution(cls, sub, lvl);
-  (mcClasses || []).forEach(mc => {
-    if (mc.cls) combinedLevel += getCasterContribution(mc.cls, mc.sub || '', mc.level || 1);
-  });
-  combinedLevel = Math.min(20, Math.max(1, combinedLevel));
-
-  const slotsArr = MC_SPELL_SLOTS[combinedLevel] || [];
+  const slotsArr = SPELL_SLOTS[Math.min(lvl,20)] || [];
   if (!slotsArr.length) { el.innerHTML = '<span class="muted">No spell slots at this level.</span>'; return; }
   if (!Object.keys(spellSlots).length && c && c.spellSlots) Object.assign(spellSlots, c.spellSlots);
   slotsArr.forEach((n,i) => { if (!spellSlots[i+1]) spellSlots[i+1] = {total:n, used:0}; });
-
-  let html = '';
-  // Show pact slots separately if multiclassing into/out of Warlock
-  if (isPact || (mcClasses||[]).some(mc => mc.cls && CLASS_DATA[mc.cls]?.isPact)) {
-    const warlockLvl = isPact ? lvl : ((mcClasses||[]).find(mc => mc.cls && CLASS_DATA[mc.cls]?.isPact)?.level || 1);
-    const pactTotal  = (WARLOCK_SLOTS[Math.min(warlockLvl,20)] || [0])[0];
-    const pactLvl    = WARLOCK_SLOT_LEVEL[Math.min(warlockLvl,20)] || 1;
-    const pactUsed   = spellSlots['pact']?.used || 0;
-    if (!spellSlots['pact']) spellSlots['pact'] = {total: pactTotal, used: 0};
-    html += `<div class="slot-row">
-      <span style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold2);min-width:120px">Pact (lvl ${pactLvl})</span>
-      ${Array(pactTotal).fill(0).map((_,p) => `<div class="slot-pip ${p<pactTotal-pactUsed?'avail':'used'}" onclick="togglePactSlotMC(${p+1},${pactTotal})"></div>`).join('')}
-      <span class="muted" style="margin-left:6px;font-size:.8rem">${pactTotal-pactUsed}/${pactTotal} (short rest)</span>
-    </div>`;
-  }
-
-  html += slotsArr.map((n,i) => {
+  el.innerHTML = slotsArr.map((n,i) => {
     const lvlNum = i + 1;
     const used   = spellSlots[lvlNum]?.used || 0;
     return `<div class="slot-row">
@@ -4394,11 +4345,6 @@ function buildSpellSlotUI(c) {
       <span class="muted" style="margin-left:6px;font-size:.8rem">${n-used}/${n}</span>
     </div>`;
   }).join('');
-
-  if ((mcClasses||[]).length && combinedLevel > 1) {
-    html += `<div style="font-size:.72rem;color:var(--parch2);margin-top:6px">Combined caster level: ${combinedLevel}</div>`;
-  }
-  el.innerHTML = html;
 }
 
 function toggleSlot(lvl, pip, total) {
@@ -4412,14 +4358,6 @@ function toggleSlot(lvl, pip, total) {
 function togglePactSlot(pip, total) {
   if (!spellSlots[1]) spellSlots[1] = {total, used:0};
   const s = spellSlots[1];
-  s.used  = pip <= total - s.used ? total - pip + 1 : Math.max(0, s.used - 1);
-  s.used  = Math.min(s.used, total);
-  buildSpellSlotUI();
-}
-
-function togglePactSlotMC(pip, total) {
-  if (!spellSlots['pact']) spellSlots['pact'] = {total, used:0};
-  const s = spellSlots['pact'];
   s.used  = pip <= total - s.used ? total - pip + 1 : Math.max(0, s.used - 1);
   s.used  = Math.min(s.used, total);
   buildSpellSlotUI();
@@ -4501,11 +4439,12 @@ function autoCalcHP() {
 function rollInitiative() {
   const scores = getScores();
   const dexMod = mod(scores.DEX || 10);
-  const roll   = Math.ceil(Math.random() * 4);  // d4 for initiative modifier
+  const roll   = Math.ceil(Math.random() * 20);
   const total  = roll + dexMod;
   const el     = document.getElementById('c-init-display');
   if (el) el.textContent = (total >= 0 ? '+' : '') + total;
-  showRoll('Initiative (1d4)', [roll], total);
+  // Also log to dice roller history if it exists
+  showRoll('Initiative', [roll], total);
 }
 
 /* =============================================================================
@@ -5057,21 +4996,6 @@ function toggleInspiration() {
   document.getElementById('insp-pip').classList.toggle('active', inspiration);
 }
 
-const EXHAUSTION_EFFECTS = [
-  '',
-  'Disadvantage on ability checks',
-  'Speed halved',
-  'Disadvantage on attacks & saving throws',
-  'Hit point maximum halved',
-  'Speed reduced to 0',
-  '☠ Death'
-];
-function updateExhaustionDisplay() {
-  const lvl = parseInt(document.getElementById('c-exhaustion')?.value) || 0;
-  const el  = document.getElementById('exhaustion-effect');
-  if (el) el.textContent = EXHAUSTION_EFFECTS[lvl] || '';
-}
-
 /* =============================================================================
    CREATOR TAB SWITCHING
 ============================================================================= */
@@ -5083,16 +5007,7 @@ function creatorTab(tab, btn) {
   if (panel) panel.classList.add('active');
   // Refresh panels that need live calculation
   if (tab === 'choices')   { renderChoicesPanel(); }
-  if (tab === 'skills')    {
-    // Snapshot current checked state before rebuilding DOM
-    const snapProfs = SKILLS_DATA.filter(sk => { const cb = document.getElementById('skill-' + sid(sk.name)); return cb && cb.checked; }).map(sk => sk.name);
-    const snapExp   = SKILLS_DATA.filter(sk => { const cb = document.getElementById('skill-exp-' + sid(sk.name)); return cb && cb.checked; }).map(sk => sk.name);
-    const snapSaves = ABILITIES.filter(a => { const cb = document.getElementById('save-' + a); return cb && cb.checked; });
-    buildSkillsList({ skillProfs: snapProfs, skillExp: snapExp });
-    buildSavingThrows({ saveProfs: snapSaves });
-    updateSkillsList();
-    updateSavesList();
-  }
+  if (tab === 'skills')    { buildSkillsList(); updateSkillsList(); updateSavesList(); }
   if (tab === 'spells')    { buildSpellSlotUI(); renderSpellList(); updateSpellStats(); }
   if (tab === 'equipment') { renderEquipList(); }
   if (tab === 'features')  { renderFeaturesPanel(); }
@@ -9767,21 +9682,18 @@ function filterShop() {
 }
 
 function addShopItemToChar(name, wt) {
-  // Add to customEquip array (always live, whether creator is open or not)
-  if (!editingCharId && !document.getElementById('creator-modal')?.classList.contains('open')) {
-    alert(`Open or create a character first, then add items from the shop.`);
-    return;
-  }
-  customEquip.push({ name, qty:1, wt, note:'' });
-  // Refresh equipment list if the equipment tab is visible
-  const equipPanel = document.getElementById('creator-equipment');
-  if (equipPanel) renderEquipList();
-  // Flash feedback on button
-  const btn = event?.target;
-  if (btn) {
+  // Add directly to current character's equipment if creator is open
+  const modal = document.getElementById('creator-modal');
+  if (modal && modal.classList.contains('open')) {
+    customEquip.push({ name, qty:1, wt, note:'' });
+    renderEquipList();
+    // Flash feedback
+    const btn = event.target;
     const orig = btn.textContent;
     btn.textContent = '✓ Added'; btn.style.color = '#55a055';
     setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1200);
+  } else {
+    alert(`Open a character first, then browse the shop to add "${name}" to their inventory.`);
   }
 }
 /* =============================================================================
@@ -9799,6 +9711,539 @@ function showSyncToast(msg, isError = false) {
 function setSyncStatus(msg, color = 'var(--parch2)') {
   const el = document.getElementById('sync-status');
   if (el) { el.textContent = msg; el.style.color = color; }
+}
+
+/* =============================================================================
+   COMPENDIUM
+============================================================================= */
+const CLASS_FLAVOR = {
+  Artificer:  'The tech wizard. You craft magical inventions, infuse items with power, and bring constructs to life. Excellent support with a toolkit for every problem — but needs setup time. Best for players who like gadgets and versatility.',
+  Barbarian:  'Pure melee fury. You wade into battle, shrug off damage with massive HP, and dish out brutal strikes while raging. No spells, just raw power. Best for players who want to hit hard and not die.',
+  Bard:       'The jack of all trades. Spells, skills, inspiration dice to boost allies, and a silver tongue for any situation. Half-support, half-blaster, fully indispensable. Best for social and flexible players.',
+  Cleric:     'Divine spellcaster. You call on a god for healing, buffs, and surprisingly powerful offensive spells. Heavy armor, great saves, and a domain that completely reshapes your playstyle. Best for team players who want to feel divine.',
+  Druid:      'Nature\'s champion. Shapeshift into beasts, cast powerful battlefield control spells, and summon nature spirits. Incredible versatility — you can be a frontliner, healer, or blaster. Best for players who love the outdoors.',
+  Fighter:    'The combat expert. More attacks than anyone, Action Surge for burst turns, and a fighting style that fits any weapon. Not flashy, but extremely reliable. Best for players who want to win fights consistently.',
+  Monk:       'Speed and precision. You hit fast, move faster, and spend Ki points to stun enemies, deflect missiles, or run on water. Low HP but incredibly mobile. Best for agile, creative players.',
+  Paladin:    'Holy warrior. Divine Smite stacks extra damage on crits, your aura protects your whole team, and you\'re both a frontliner and healer in one. Best for players who want to be the hero of the party.',
+  Ranger:     'Wilderness hunter. Favored enemies and terrain give bonuses, spells augment your archery or melee, and a beast companion fights by your side. Best for outdoorsy characters with strong theme.',
+  Rogue:      'Precision striker. Sneak Attack stacks up, Expertise doubles proficiencies, and Cunning Action gives you unmatched mobility. One big hit per round — but it\'s a big one. Best for players who love skill checks and setup.',
+  Sorcerer:   'Magic in your blood. Fewer spells than a Wizard but Metamagic lets you bend them — quicken, twin, extend, empower. Charisma-based with natural spellcasting. Best for players who want pure spellcasting power.',
+  Warlock:    'Pact magic. A few powerful slots that recharge on short rests, eldritch blast as a reliable cantrip, and invocations that customize your entire kit. Best for players who want a unique magical patron relationship.',
+  Wizard:     'The master of magic. Largest spell list in the game, a spellbook you expand over time, and Arcane Recovery to get slots back. Fragile but devastating. Best for players who love strategy and preparation.',
+};
+
+const RACE_FLAVOR = {
+  'Human':               'The most adaptable race — +1 to every stat (standard) or +1 to two stats, a feat, and a skill (variant). Never exceptional but never weak. Perfect for any class.',
+  'Human (Variant)':     'The power-pick Human. Trade the all-stats bonus for a feat at level 1 — giving you an enormous early advantage. Popular for nearly every build.',
+  'Dragonborn':          'Descendants of dragons. Breath weapon and damage resistance make you a combat powerhouse with presence. +2 STR +1 CHA pairs well with Paladin, Sorcerer, or Fighter.',
+  'Dwarf (Hill)':        '+2 CON +1 WIS, +1 HP per level, poison resistance. Tough and reliable. Excellent for Cleric, Paladin, or any frontliner who wants to stay standing.',
+  'Dwarf (Mountain)':    '+2 CON +2 STR, light/medium armor proficiency. The strongest melee Dwarf. Great for Fighter or Paladin who needs STR and CON both high.',
+  'Elf (High)':          '+2 DEX +1 INT, free wizard cantrip, Perception proficiency. Elegant and sharp. Great for Wizard, Ranger, or any INT/DEX class.',
+  'Elf (Wood)':          '+2 DEX +1 WIS, speed 35 ft, Mask of the Wild stealth. The stealthy elven scout. Pairs brilliantly with Ranger or Rogue.',
+  'Elf (Drow)':          '+2 DEX +1 CHA, superior darkvision 120ft, innate spells. High charisma and stealth. Excellent Warlock, Bard, or Sorcerer with a dark edge.',
+  'Gnome (Forest)':      '+2 INT +1 DEX, Minor Illusion cantrip, talk to small beasts. Trickster gnome — great for Bard, Artificer, or illusionist Wizard.',
+  'Gnome (Rock)':        '+2 INT +1 CON, tinker tools, Artificer\'s Lore. The inventor gnome. Strongest match for Artificer or INT-heavy Wizard.',
+  'Half-Elf':            '+2 CHA and +1 to two other stats of your choice. Two bonus skills. Incredible flexibility — fits Bard, Paladin, Sorcerer, or Warlock perfectly.',
+  'Half-Orc':            '+2 STR +1 CON, Relentless Endurance (drop to 1 HP instead of 0, 1/rest), Savage Attacks. The survivable brute. Pairs with Barbarian or Fighter.',
+  'Halfling (Lightfoot)':'+2 DEX +1 CHA, Lucky (reroll 1s), Naturally Stealthy. Sneaky and lucky. Strong for Rogue or Bard.',
+  'Halfling (Stout)':    '+2 DEX +1 CON, poison resistance. Tougher Halfling. Great for Rogue or Ranger who needs a bit more survivability.',
+  'Tiefling':            '+2 CHA +1 INT, fire resistance, innate spells. Charismatic and infernal. Excellent Warlock, Sorcerer, Bard, or Paladin.',
+  'Aasimar':             '+2 CHA, necrotic+radiant resistance, healing hands, Light cantrip. Choose Protector (wings+radiant), Scourge (damage aura), or Fallen (necrotic+fear). Great Paladin or Cleric.',
+  'Goliath':             '+2 STR +1 CON, Stone\'s Endurance (reduce one damage hit per rest), Athletics proficiency. The mountain warrior. Best Barbarian or Fighter.',
+  'Tabaxi':              '+2 DEX +1 CHA, Feline Agility (double speed burst), Claws, Climb 20ft. Fast and flexible. Great Rogue or Monk.',
+  'Tortle':              '+2 STR +1 WIS, natural AC 17 (replaces armor), Shell Defense. Unique: makes armor worthless — great for Barbarian, Monk, or Druid.',
+  'Warforged':           '+2 CON +1 any, integrated protection, immune to disease/poison/sleep. A living construct. Excellent for any class that wants raw durability.',
+  'Firbolg':             '+2 WIS +1 STR, Detect Magic+Disguise Self 1/rest, speak with beasts. Nature giant — best Druid or Cleric.',
+  'Goblin':              '+2 DEX +1 CON, Nimble Escape (disengage/hide as bonus action), Fury of the Small. Rogue\'s dream race — bonus action mobility is massive.',
+  'Kenku':               '+2 DEX +1 WIS, Expert Forgery, two skills, Mimicry. Skilled and stealthy. Good Rogue or Ranger.',
+  'Lizardfolk':          '+2 CON +1 WIS, natural armor 13+DEX, bite, hold breath. Survivalist reptile — Barbarian or Ranger.',
+  'Triton':              '+1 STR/CON/CHA, swim 30ft, breathe water, innate spells. Sea warrior — great Paladin, Cleric, or Fighter in aquatic campaigns.',
+  'Changeling':          '+2 CHA +1 any, at-will shapeshifting, two skills. The ultimate infiltrator. Best Bard, Rogue, or Warlock.',
+  'Aarakocra':           '+2 DEX +1 WIS, fly speed 50ft — the most powerful racial trait in the game. Excellent Ranger or Monk.',
+};
+
+const BG_FLAVOR = {
+  Acolyte:              'Temple servant of a deity. You gain Insight and Religion skills and a network of clergy who will shelter you. Great for Clerics and Paladins thematically.',
+  Charlatan:            'Skilled con artist. Deception and Sleight of Hand skills, plus a false identity. Perfect for Rogues and Bards who love deception.',
+  Criminal:             'Life outside the law. Deception and Stealth skills, a criminal contact for information. The classic Rogue background.',
+  Entertainer:          'Performer who lives for the crowd. Acrobatics and Performance skills. Natural for Bards and social characters.',
+  'Folk Hero':          'Rose from humble origins to legendary status. Animal Handling and Survival skills. Great for Rangers, Fighters, or Barbarians with a hero story.',
+  'Guild Artisan':      'Skilled craftsperson with a guild network. Insight and Persuasion skills. Good for Artificers, Rogues, or social builds.',
+  Hermit:               'Reclusive seeker of truth. Medicine and Religion skills, plus a secret discovery. Works for Druids, Clerics, or mysterious Warlocks.',
+  Knight:               'Noble warrior with retainers. History and Persuasion skills. Strong for Paladins and Fighters with noble themes.',
+  Noble:                'Born to privilege. History and Persuasion skills, position of privilege lets you get access to people and places. Excellent for social Paladins or Bards.',
+  Outlander:            'Raised in the wild. Athletics and Survival skills, can always find food and water. Strong fit for Rangers, Druids, or Barbarians.',
+  Sage:                 'Scholar of ancient lore. Arcana and History skills, know where to find obscure knowledge. Best for Wizards, Clerics, and INT-heavy builds.',
+  Sailor:               'Life at sea. Athletics and Perception skills, passage on ships. Great for aquatic campaigns or any adventurer who traveled by sea.',
+  Soldier:              'Military veteran. Athletics and Intimidation skills, military rank lets you give orders. Strong for Fighters and Paladins.',
+  Urchin:               'Street survivor. Sleight of Hand and Stealth skills, know every shortcut in the city. Perfect for Rogues and Bards.',
+  Pirate:               'Sea raider. Athletics and Perception skills, feared reputation. Fun for swashbuckling characters.',
+  Spy:                  'Intelligence operative. Deception and Stealth skills. Works well with any sneaky or social build.',
+  Gladiator:            'Arena fighter. Acrobatics and Performance. Entertainer variant with a combat theme.',
+  'Haunted One':        'Survivor of terrible horror. Arcana or Survival skills, plus a monster knowledge feature. Iconic for Gothic/horror themed characters.',
+  'Far Traveler':       'Visitor from a distant land. Insight and Perception. Great for exotic character concepts.',
+  Inheritor:            'Heir to something significant. Survival plus one choice. Custom inheritance gives narrative hooks.',
+  'Urban Bounty Hunter':'Tracker in cities. Two from Deception/Insight/Persuasion/Stealth. Contact network. Flexible and useful.',
+  'Mercenary Veteran':  'Sold-sword professional. Athletics and Persuasion. Good for fighters who want a gritty background.',
+  'City Watch':         'Served law enforcement. Athletics and Insight. Know city layouts and NPCs.',
+  'Clan Crafter':       'Dwarven craftsperson. History and Insight. Works well for Dwarven characters especially.',
+  Courtier:             'Served in a royal court. Insight and Persuasion. Strong for political campaign settings.',
+  'Faction Agent':      'Member of a major faction. Insight plus one faction skill. Great for campaign-tied characters.',
+  'Gate Warden':        'Planar traveler or portal guardian. Athletics and Survival. Perfect for Planescape settings.',
+};
+
+let compActiveTab = 'classes';
+
+function compTab(tab, btn) {
+  compActiveTab = tab;
+  document.querySelectorAll('#comp-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderCompendium();
+}
+
+function renderCompendium() {
+  const el = document.getElementById('comp-content');
+  if (!el) return;
+  const lvl = parseInt(document.getElementById('comp-level')?.value) || 1;
+  const q   = (document.getElementById('comp-search')?.value || '').toLowerCase().trim();
+  const tab = compActiveTab;
+  if (tab === 'classes')          el.innerHTML = renderCompClasses(lvl, q);
+  else if (tab === 'subclasses')  el.innerHTML = renderCompSubclasses(lvl, q);
+  else if (tab === 'races')       el.innerHTML = renderCompRaces(q);
+  else if (tab === 'subraces')    el.innerHTML = renderCompSubraces(q);
+  else if (tab === 'backgrounds') el.innerHTML = renderCompBackgrounds(q);
+  else if (tab === 'feats')       el.innerHTML = renderCompFeats(q);
+  else if (tab === 'spells')      el.innerHTML = renderCompSpells(lvl, q);
+  else if (tab === 'weapons')     el.innerHTML = renderCompWeapons(q);
+  else if (tab === 'armor')       el.innerHTML = renderCompArmorTab(q);
+  else if (tab === 'invocations') el.innerHTML = renderCompInvocations(lvl, q);
+  else if (tab === 'conditions')  el.innerHTML = renderCompConditions(q);
+  else if (tab === 'proficiencies') el.innerHTML = renderCompProficiencies(q);
+}
+
+function compCard(id, summary, detail, accentColor) {
+  const color = accentColor || 'var(--gold)';
+  return `<div class="comp-card" id="cc-${id}" style="background:var(--dark2);border:1px solid rgba(201,168,76,.18);margin-bottom:6px;border-radius:2px">
+    <div class="comp-card-head" onclick="compToggle('${id}')"
+      style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:11px 14px;cursor:pointer;user-select:none">
+      <div style="flex:1">${summary}</div>
+      <span class="comp-chevron" id="chev-${id}" style="color:${color};font-size:.7rem;flex-shrink:0;margin-top:3px;transition:.2s">▶</span>
+    </div>
+    <div class="comp-card-body" id="cb-${id}" style="display:none;padding:0 14px 14px;border-top:1px solid rgba(201,168,76,.1)">${detail}</div>
+  </div>`;
+}
+
+function compToggle(id) {
+  const body = document.getElementById('cb-' + id);
+  const chev = document.getElementById('chev-' + id);
+  if (!body) return;
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  if (chev) chev.style.transform = open ? '' : 'rotate(90deg)';
+}
+
+function compBadge(text, color) {
+  return `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:.68rem;font-family:'Cinzel',serif;background:${color||'rgba(201,168,76,.15)'};border:1px solid rgba(201,168,76,.3);color:var(--gold2);margin:1px 2px">${text}</span>`;
+}
+
+function compStatLine(label, value) {
+  return `<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(201,168,76,.07)">
+    <span style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold2);min-width:130px;flex-shrink:0">${label}</span>
+    <span style="font-size:.85rem;color:var(--parch)">${value}</span>
+  </div>`;
+}
+
+function compSection(title, content) {
+  return `<div style="margin-top:10px">
+    <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid rgba(201,168,76,.15)">${title}</div>
+    ${content}
+  </div>`;
+}
+
+function noResults(q) {
+  return `<div class="muted" style="padding:30px;text-align:center">No results for "<strong>${q}</strong>"</div>`;
+}
+
+function renderCompClasses(lvl, q) {
+  const pb = PROF_BONUS[Math.min(lvl,20)] || 2;
+  const spellSlotDisplay = (cd, lvl) => {
+    if (!cd.spellAb) return 'None';
+    if (cd.isPact) {
+      const s = WARLOCK_SLOTS[Math.min(lvl,20)] || [0];
+      return `${s[0]} pact slot(s) at level ${WARLOCK_SLOT_LEVEL[Math.min(lvl,20)]} (regain on short rest)`;
+    }
+    const effLvl = cd.isHalf ? Math.floor(lvl/2) : lvl;
+    const slots = SPELL_SLOTS[Math.min(effLvl,20)] || [];
+    if (!slots.length) return 'None yet';
+    return slots.map((n,i) => `${n}×L${i+1}`).filter((_,i) => slots[i]>0).join('  ');
+  };
+  const entries = Object.entries(CLASS_DATA).filter(([cls]) =>
+    !q || cls.toLowerCase().includes(q) || (CLASS_FLAVOR[cls]||'').toLowerCase().includes(q)
+  );
+  if (!entries.length) return noResults(q);
+  return entries.map(([cls, cd]) => {
+    const feats = CLASS_FEATURES[cls] || {};
+    const asi = ASI_LEVELS[cls] || [];
+    const asiEarned = asi.filter(l => l <= lvl);
+    const nextAsi = asi.find(l => l > lvl);
+    const featLines = [];
+    for (let i = 1; i <= lvl; i++) {
+      if (feats[i]) feats[i].forEach(f => featLines.push(`<div style="padding:2px 0;font-size:.82rem;color:var(--parch2)"><span style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--gold2);min-width:48px;display:inline-block">Lv${i}</span> ${f}</div>`));
+    }
+    const summary = `
+      <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px">
+          <div style="font-family:'Cinzel',serif;color:var(--gold);font-size:1rem">${cls}</div>
+          <div style="font-size:.82rem;color:var(--parch2);margin-top:3px;line-height:1.5">${CLASS_FLAVOR[cls] || ''}</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start;flex-shrink:0">
+          ${compBadge('d' + cd.hd + ' HP')}
+          ${compBadge(cd.spellAb ? (cd.isHalf ? 'Half-caster' : cd.isPact ? 'Pact Magic' : 'Full Caster') : 'No Spells')}
+          ${compBadge(cd.saves.join('/') + ' Saves')}
+        </div>
+      </div>`;
+    const detail = `
+      <div style="margin-top:12px">
+        ${compStatLine('Hit Die', 'd' + cd.hd + ' per level')}
+        ${compStatLine('Saving Throws', cd.saves.map(s => ({STR:'Strength',DEX:'Dexterity',CON:'Constitution',INT:'Intelligence',WIS:'Wisdom',CHA:'Charisma'}[s]||s)).join(', '))}
+        ${compStatLine('Proficiency Bonus', '+' + pb + ' at level ' + lvl)}
+        ${compStatLine('Spellcasting', cd.spellAb ? `${({'INT':'Intelligence','WIS':'Wisdom','CHA':'Charisma'}[cd.spellAb]||cd.spellAb)}-based` : 'None')}
+        ${compStatLine('Spell Slots (Lv ' + lvl + ')', spellSlotDisplay(cd, lvl))}
+        ${compStatLine('ASI Earned by Lv' + lvl, asiEarned.length ? 'Levels ' + asiEarned.join(', ') : 'None yet')}
+        ${nextAsi ? compStatLine('Next ASI', 'Level ' + nextAsi) : ''}
+        ${compSection('Subclasses', cd.subs.map(s => compBadge(s,'rgba(100,80,180,.2)')).join(''))}
+        ${featLines.length ? compSection('Class Features at Level ' + lvl, featLines.join('')) : ''}
+      </div>`;
+    return compCard('class-' + cls.replace(/\s/g,'_'), summary, detail);
+  }).join('');
+}
+
+function renderCompSubclasses(lvl, q) {
+  const allSubs = [];
+  Object.entries(CLASS_DATA).forEach(([cls, cd]) => { cd.subs.forEach(sub => allSubs.push({ cls, sub })); });
+  const filtered = allSubs.filter(({cls, sub}) =>
+    !q || sub.toLowerCase().includes(q) || cls.toLowerCase().includes(q) || (SUBCLASS_INFO[sub]||'').toLowerCase().includes(q)
+  );
+  if (!filtered.length) return noResults(q);
+  return filtered.map(({cls, sub}) => {
+    const info = SUBCLASS_INFO[sub] || 'No description available.';
+    const features = SUBCLASS_FEATURES[sub] || {};
+    const choices = SUBCLASS_CHOICES[sub] || {};
+    const summary = `
+      <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="font-family:'Cinzel',serif;color:var(--gold);font-size:.95rem">${sub}</div>
+          <div style="font-size:.72rem;color:var(--gold2);font-family:'Cinzel',serif;margin-top:2px">${cls}</div>
+          <div style="font-size:.82rem;color:var(--parch2);margin-top:4px;line-height:1.5">${info.split('.')[0]}.</div>
+        </div>
+      </div>`;
+    const featHtml = Object.entries(features).map(([feat, desc]) =>
+      `<div style="margin-bottom:7px"><span style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--gold2)">${feat}:</span> <span style="font-size:.82rem;color:var(--parch2)">${desc}</span></div>`
+    ).join('');
+    const choiceHtml = Object.entries(choices).map(([key, def]) => {
+      if (def.type === 'display') return `<div style="font-size:.82rem;color:var(--parch2);margin-bottom:6px"><strong style="color:var(--gold2)">${def.label}:</strong> ${def.note||''}</div>`;
+      if (!def.options) return '';
+      return `<div style="margin-bottom:8px">
+        <div style="font-family:'Cinzel',serif;font-size:.75rem;color:var(--gold2);margin-bottom:4px">${def.label}</div>
+        ${def.options.map(o => `<div style="padding:3px 0;font-size:.8rem;color:var(--parch2);border-bottom:1px solid rgba(201,168,76,.06)"><strong style="color:var(--parch)">${o.v}</strong>${o.d?' — '+o.d:''}</div>`).join('')}
+      </div>`;
+    }).join('');
+    const detail = `
+      <div style="margin-top:12px">
+        <div style="font-size:.85rem;color:var(--parch2);line-height:1.6;margin-bottom:10px">${info}</div>
+        ${featHtml ? compSection('Subclass Features', featHtml) : ''}
+        ${choiceHtml ? compSection('Available Choices', choiceHtml) : ''}
+      </div>`;
+    return compCard('sub-' + sub.replace(/[\s']/g,'_'), summary, detail);
+  }).join('');
+}
+
+function renderCompRaces(q) {
+  const entries = Object.entries(RACE_DATA).filter(([race]) =>
+    !q || race.toLowerCase().includes(q) || (RACE_FLAVOR[race]||'').toLowerCase().includes(q)
+  );
+  if (!entries.length) return noResults(q);
+  return entries.map(([race, rd]) => {
+    const traits = (RACE_TRAITS[race]?.base || []);
+    const subraces = SUBRACE_DATA[race] || [];
+    const bonusStr = Object.entries(rd.bonuses).map(([k,v]) => `+${v} ${k}`).join(', ') || 'Flexible';
+    const summary = `
+      <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="font-family:'Cinzel',serif;color:var(--gold);font-size:.95rem">${race}</div>
+          <div style="font-size:.82rem;color:var(--parch2);margin-top:3px">${RACE_FLAVOR[race] || rd.info}</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:3px;flex-shrink:0">${compBadge(bonusStr)}${compBadge(rd.speed + ' ft')}</div>
+      </div>`;
+    const traitHtml = traits.map(t =>
+      `<div style="padding:4px 0;border-bottom:1px solid rgba(201,168,76,.07)"><strong style="font-size:.82rem;color:var(--parch)">${t.n}:</strong> <span style="font-size:.82rem;color:var(--parch2)">${t.d}</span></div>`
+    ).join('');
+    const detail = `
+      <div style="margin-top:12px">
+        ${compStatLine('Ability Bonuses', bonusStr)}
+        ${compStatLine('Speed', rd.speed + ' ft')}
+        ${compStatLine('Subraces / Variants', subraces.length ? subraces.join(', ') : 'None')}
+        ${compStatLine('Full Info', rd.info)}
+        ${traitHtml ? compSection('Racial Traits', traitHtml) : ''}
+      </div>`;
+    return compCard('race-' + race.replace(/[\s()]/g,'_'), summary, detail);
+  }).join('');
+}
+
+function renderCompSubraces(q) {
+  const all = [];
+  Object.entries(SUBRACE_DATA).forEach(([race, subs]) => {
+    const rt = RACE_TRAITS[race];
+    subs.forEach(sub => { all.push({ race, sub, traits: rt?.subraces?.[sub] || [] }); });
+  });
+  const filtered = all.filter(({race, sub, traits}) =>
+    !q || sub.toLowerCase().includes(q) || race.toLowerCase().includes(q) ||
+    traits.some(t => (t.n+t.d).toLowerCase().includes(q))
+  );
+  if (!filtered.length) return noResults(q);
+  return filtered.map(({race, sub, traits}) => {
+    const summary = `
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1">
+          <div style="font-family:'Cinzel',serif;color:var(--gold);font-size:.92rem">${sub}</div>
+          <div style="font-size:.72rem;color:var(--gold2);font-family:'Cinzel',serif">${race}</div>
+          ${traits.length ? `<div style="font-size:.8rem;color:var(--parch2);margin-top:3px">${traits[0].n}: ${traits[0].d.substring(0,80)}…</div>` : ''}
+        </div>
+      </div>`;
+    const traitHtml = traits.length
+      ? traits.map(t => `<div style="padding:4px 0;border-bottom:1px solid rgba(201,168,76,.07)"><strong style="font-size:.82rem;color:var(--parch)">${t.n}:</strong> <span style="font-size:.82rem;color:var(--parch2)">${t.d}</span></div>`).join('')
+      : '<div class="muted" style="font-size:.82rem">Standard variant — inherits all base race traits.</div>';
+    return compCard('subrace-' + (race+sub).replace(/[\s()\']/g,'_'), summary,
+      `<div style="margin-top:12px">${traitHtml}</div>`);
+  }).join('');
+}
+
+function renderCompBackgrounds(q) {
+  const entries = Object.entries(BG_DATA).filter(([bg]) =>
+    !q || bg.toLowerCase().includes(q) || (BG_FLAVOR[bg]||'').toLowerCase().includes(q)
+  );
+  if (!entries.length) return noResults(q);
+  return entries.map(([bg, bd]) => {
+    const bgSkills = BG_SKILLS[bg] || [];
+    const summary = `
+      <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="font-family:'Cinzel',serif;color:var(--gold);font-size:.95rem">${bg}</div>
+          <div style="font-size:.82rem;color:var(--parch2);margin-top:3px">${BG_FLAVOR[bg] || bd.skills}</div>
+        </div>
+        <div style="flex-shrink:0">${compBadge(bd.feature)}</div>
+      </div>`;
+    const detail = `
+      <div style="margin-top:12px">
+        ${compStatLine('Skill Proficiencies', bd.skills)}
+        ${compStatLine('Feature', bd.feature)}
+        ${bgSkills.length ? compStatLine('Auto-Applied Skills', bgSkills.join(', ')) : ''}
+        <div style="font-size:.84rem;color:var(--parch2);margin-top:10px;line-height:1.6">${BG_FLAVOR[bg] || ''}</div>
+      </div>`;
+    return compCard('bg-' + bg.replace(/\s/g,'_'), summary, detail);
+  }).join('');
+}
+
+function renderCompFeats(q) {
+  const feats = FEATS_LIST.filter(f =>
+    !q || f.toLowerCase().includes(q) || (FEATS_INFO[f]||'').toLowerCase().includes(q)
+  );
+  if (!feats.length) return noResults(q);
+  return feats.map(feat => {
+    const info = FEATS_INFO[feat] || 'No description available.';
+    const summary = `
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1">
+          <div style="font-family:'Cinzel',serif;color:var(--gold);font-size:.92rem">${feat}</div>
+          <div style="font-size:.82rem;color:var(--parch2);margin-top:3px">${info.split('.')[0]}.</div>
+        </div>
+      </div>`;
+    return compCard('feat-' + feat.replace(/[\s']/g,'_'), summary,
+      `<div style="font-size:.84rem;color:var(--parch2);margin-top:12px;line-height:1.6">${info}</div>`);
+  }).join('');
+}
+
+function renderCompSpells(lvl, q) {
+  const dmgColors = {Fire:'#c0401a',Acid:'#5a8a2a',Cold:'#3a7aaa',Lightning:'#8a6aca',Thunder:'#6a8aaa',Necrotic:'#5a2a6a',Radiant:'#c9a030',Poison:'#3a6a2a',Psychic:'#aa3a8a',Force:'#3a5a9a',Piercing:'#8a6040',Slashing:'#8a4040',Bludgeoning:'#8a7040',Healing:'#2a8a4a'};
+  const getDC = t => { for (const [k,c] of Object.entries(dmgColors)) if (t&&t.includes(k)) return c; return '#888'; };
+  const filtered = SPELL_DB.filter(s =>
+    !q || s.name.toLowerCase().includes(q) || (s.desc||'').toLowerCase().includes(q) ||
+    (s.school||'').toLowerCase().includes(q) || s.classes.some(c => c.toLowerCase().includes(q)) ||
+    (s.damageType||'').toLowerCase().includes(q)
+  );
+  if (!filtered.length) return noResults(q);
+  const sorted = [...filtered].sort((a,b) => a.level !== b.level ? a.level - b.level : a.name.localeCompare(b.name));
+  let currentLevel = -1;
+  return sorted.map(s => {
+    const header = s.level !== currentLevel
+      ? (() => { currentLevel = s.level; return `<div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold2);letter-spacing:2px;padding:12px 0 4px;border-bottom:1px solid rgba(201,168,76,.2);margin-bottom:6px">${s.level===0?'CANTRIPS':'LEVEL '+s.level+' SPELLS'}</div>`; })()
+      : '';
+    const summary = `
+      <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="font-family:'Cinzel',serif;color:var(--gold);font-size:.9rem">${s.name}</div>
+          <div style="font-size:.72rem;color:var(--parch2);margin-top:2px">${s.school} · ${s.castTime} · ${s.range}</div>
+        </div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap;flex-shrink:0;align-items:center">
+          ${s.damageType ? `<span style="font-size:.68rem;padding:1px 6px;border-radius:8px;background:${getDC(s.damageType)}22;border:1px solid ${getDC(s.damageType)}66;color:${getDC(s.damageType)}">${s.damageType}</span>` : ''}
+          ${s.damageDice ? `<span style="font-size:.72rem;color:var(--gold2);font-family:'Cinzel',serif">${s.damageDice}</span>` : ''}
+          ${s.save ? `<span style="font-size:.68rem;padding:1px 5px;background:rgba(139,32,32,.2);border:1px solid rgba(139,32,32,.4);color:#c07070">${s.save} save</span>` : ''}
+        </div>
+      </div>`;
+    const detail = `
+      <div style="margin-top:12px">
+        ${compStatLine('School', s.school)}
+        ${compStatLine('Casting Time', s.castTime)}
+        ${compStatLine('Range', s.range)}
+        ${compStatLine('Duration', s.duration)}
+        ${compStatLine('Components', s.components)}
+        ${s.damageDice ? compStatLine('Damage', s.damageDice + ' ' + (s.damageType||'')) : ''}
+        ${s.save ? compStatLine('Saving Throw', s.save) : ''}
+        ${s.attackType ? compStatLine('Attack Type', s.attackType) : ''}
+        ${compSection('Description', `<div style="font-size:.84rem;color:var(--parch2);line-height:1.6">${s.desc}</div>`)}
+        ${compSection('Available To', s.classes.map(c => compBadge(c,'rgba(201,168,76,.08)')).join(''))}
+      </div>`;
+    return header + compCard('spell-' + s.name.replace(/[\s\']/g,'_'), summary, detail);
+  }).join('');
+}
+
+function renderCompWeapons(q) {
+  const filtered = WEAPONS_TABLE.filter(w =>
+    !q || w.n.toLowerCase().includes(q) || w.cat.toLowerCase().includes(q) || w.prop.toLowerCase().includes(q)
+  );
+  if (!filtered.length) return noResults(q);
+  const grouped = {};
+  filtered.forEach(w => { if (!grouped[w.cat]) grouped[w.cat]=[]; grouped[w.cat].push(w); });
+  return Object.entries(grouped).map(([cat, weapons]) => `
+    <div style="margin-bottom:4px">
+      <div style="font-family:'Cinzel',serif;font-size:.75rem;color:var(--gold2);letter-spacing:.08em;padding:10px 0 4px;border-bottom:1px solid rgba(201,168,76,.2);margin-bottom:4px">${cat.toUpperCase()}</div>
+      ${weapons.map(w => compCard('wpn-'+w.n.replace(/[\s,]/g,'_'),
+        `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:120px"><div style="font-family:'Cinzel',serif;color:var(--gold);font-size:.88rem">${w.n}</div><div style="font-size:.78rem;color:var(--parch2)">${w.prop}</div></div>${compBadge(w.dmg)}${compBadge(w.cost)}</div>`,
+        `<div style="margin-top:10px">${compStatLine('Damage',w.dmg)}${compStatLine('Properties',w.prop)}${compStatLine('Cost',w.cost)}${compStatLine('Weight',w.wt+' lbs')}</div>`
+      )).join('')}
+    </div>`).join('');
+}
+
+function renderCompArmorTab(q) {
+  const filtered = ARMOR_TABLE.filter(a =>
+    !q || a.n.toLowerCase().includes(q) || a.cat.toLowerCase().includes(q)
+  );
+  if (!filtered.length) return noResults(q);
+  const grouped = {};
+  filtered.forEach(a => { if (!grouped[a.cat]) grouped[a.cat]=[]; grouped[a.cat].push(a); });
+  return Object.entries(grouped).map(([cat, armors]) => `
+    <div style="margin-bottom:4px">
+      <div style="font-family:'Cinzel',serif;font-size:.75rem;color:var(--gold2);letter-spacing:.08em;padding:10px 0 4px;border-bottom:1px solid rgba(201,168,76,.2);margin-bottom:4px">${cat.toUpperCase()}</div>
+      ${armors.map(a => compCard('arm-'+a.n.replace(/[\s,]/g,'_'),
+        `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="flex:1"><div style="font-family:'Cinzel',serif;color:var(--gold);font-size:.88rem">${a.n}</div>${a.str!=='—'?`<div style="font-size:.74rem;color:#e05555">Requires STR ${a.str}</div>`:''}</div>${compBadge('AC '+a.ac)}${a.stealth==='Disadv'?compBadge('Stealth Disadv','rgba(139,32,32,.2)'):''}${compBadge(a.cost)}</div>`,
+        `<div style="margin-top:10px">${compStatLine('Armor Class',a.ac)}${compStatLine('Strength Req.',a.str)}${compStatLine('Stealth',a.stealth)}${compStatLine('Cost',a.cost)}${compStatLine('Weight',a.wt+' lbs')}</div>`
+      )).join('')}
+    </div>`).join('');
+}
+
+function renderCompInvocations(lvl, q) {
+  const invocDef = CLASS_CHOICES?.Warlock?.invocations;
+  if (!invocDef) return '<div class="muted">No invocation data found.</div>';
+  const maxCount = (() => {
+    const cb = invocDef.countByLevel; let max = 0;
+    Object.keys(cb).forEach(l => { if (lvl >= parseInt(l)) max = cb[l]; });
+    return max;
+  })();
+  const filtered = invocDef.options.filter(o =>
+    !q || o.v.toLowerCase().includes(q) || (o.d||'').toLowerCase().includes(q) || (o.prereq||'').toLowerCase().includes(q)
+  );
+  if (!filtered.length) return noResults(q);
+  const header = `<div style="background:var(--dark3);border:1px solid rgba(201,168,76,.2);padding:10px 14px;margin-bottom:14px;font-size:.85rem;color:var(--parch2)">At level <strong style="color:var(--gold)">${lvl}</strong>, a Warlock can know <strong style="color:var(--gold)">${maxCount}</strong> invocation${maxCount!==1?'s':''}.</div>`;
+  return header + filtered.map(o => {
+    const prereqOk = !o.prereq || (() => {
+      const m = o.prereq.match(/(\d+)(?:th|st|nd|rd)?\s*level/);
+      return !(m && lvl < parseInt(m[1]));
+    })();
+    const summary = `
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <div style="flex:1">
+          <div style="font-family:'Cinzel',serif;color:${prereqOk?'var(--gold)':'rgba(201,168,76,.4)'};font-size:.9rem">${o.v}${!prereqOk?' <span style="font-size:.65rem;color:#e05555">(locked)</span>':''}</div>
+          ${o.prereq?`<div style="font-size:.72rem;color:${prereqOk?'var(--gold2)':'#e05555'};font-style:italic">Requires: ${o.prereq}</div>`:''}
+          <div style="font-size:.82rem;color:var(--parch2);margin-top:2px">${(o.d||'').substring(0,90)}${(o.d||'').length>90?'…':''}</div>
+        </div>
+      </div>`;
+    return compCard('inv-'+o.v.replace(/[\s']/g,'_'), summary,
+      `<div style="margin-top:10px">${o.prereq?compStatLine('Prerequisites',o.prereq):''}<div style="font-size:.84rem;color:var(--parch2);line-height:1.6;margin-top:8px">${o.d||''}</div></div>`);
+  }).join('');
+}
+
+function renderCompConditions(q) {
+  const filtered = CONDITIONS.filter(c =>
+    !q || c.n.toLowerCase().includes(q) || c.d.toLowerCase().includes(q)
+  );
+  if (!filtered.length) return noResults(q);
+  return filtered.map(c => compCard('cond-'+c.n.replace(/\s/g,'_'),
+    `<div><div style="font-family:'Cinzel',serif;color:var(--gold);font-size:.92rem">${c.n}</div><div style="font-size:.82rem;color:var(--parch2);margin-top:3px">${c.d.substring(0,100)}…</div></div>`,
+    `<div style="font-size:.85rem;color:var(--parch2);margin-top:12px;line-height:1.6">${c.d}</div>`
+  )).join('');
+}
+
+function renderCompProficiencies(q) {
+  const sections = [];
+  const skills = SKILLS_DATA.filter(s => !q || s.name.toLowerCase().includes(q) || s.ab.toLowerCase().includes(q));
+  if (skills.length) {
+    const abDesc = {STR:'Strength',DEX:'Dexterity',CON:'Constitution',INT:'Intelligence',WIS:'Wisdom',CHA:'Charisma'};
+    const skillDesc = {
+      Acrobatics:'Balance, tumble, and perform acrobatic stunts. Used for escaping grapples.',
+      'Animal Handling':'Calm and control animals, sense their intentions, command trained beasts.',
+      Arcana:'Recall lore about spells, magic items, symbols, traditions, and planes.',
+      Athletics:'Climb, swim, jump, and perform feats of physical power. Used for grappling.',
+      Deception:'Conceal truth, mislead others, and maintain disguises. Opposed by Insight.',
+      History:'Recall lore about historical events, legendary people, and ancient kingdoms.',
+      Insight:'Determine true intentions — spot lies, read emotions, sense hidden motives.',
+      Intimidation:'Influence others through threats, hostile actions, or displays of power.',
+      Investigation:'Find clues, deduce information from evidence, search a location.',
+      Medicine:'Stabilize dying creatures, diagnose diseases, understand anatomy.',
+      Nature:'Recall lore about plants, animals, weather, terrain, and the natural world.',
+      Perception:'Notice things using sight, hearing, smell. The most rolled skill in the game.',
+      Performance:'Entertain an audience with music, dance, acting, or storytelling.',
+      Persuasion:'Influence others with good faith, compelling argument, or positive manner.',
+      Religion:'Recall lore about deities, rites, prayers, hierarchies, and holy symbols.',
+      'Sleight of Hand':'Pickpocket, plant objects, conceal items, perform legerdemain.',
+      Stealth:'Move silently and avoid detection. Opposed by passive Perception.',
+      Survival:'Follow tracks, hunt, navigate wilderness, predict weather.',
+    };
+    const skillCards = skills.map(s => compCard('skill-'+s.name.replace(/\s/g,'_'),
+      `<div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><span style="font-family:'Cinzel',serif;color:var(--gold);font-size:.88rem">${s.name}</span><span style="font-size:.72rem;color:var(--parch2);margin-left:8px">(${abDesc[s.ab]||s.ab})</span></div>${compBadge(s.ab)}</div>`,
+      `<div style="margin-top:10px">${compStatLine('Governing Ability',abDesc[s.ab]||s.ab)}<div style="font-size:.84rem;color:var(--parch2);margin-top:8px;line-height:1.6">${skillDesc[s.name]||''}</div><div style="font-size:.78rem;color:var(--parch2);margin-top:8px;padding:6px 10px;background:rgba(201,168,76,.06);border-left:2px solid rgba(201,168,76,.3)"><strong style="color:var(--gold2)">Proficient:</strong> d20 + ability mod + proficiency bonus<br><strong style="color:var(--gold2)">Expertise:</strong> d20 + ability mod + (2 × proficiency bonus)</div></div>`
+    )).join('');
+    sections.push(`<div style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold2);letter-spacing:.06em;padding:10px 0 6px;border-bottom:1px solid rgba(201,168,76,.2);margin-bottom:6px">SKILLS</div>${skillCards}`);
+  }
+  if (!q || 'armor light medium heavy shield'.includes(q)) {
+    const armorRows = Object.entries(CLASS_ARMOR_PROFS).map(([cls, p]) => {
+      const types = [p.light&&'Light',p.medium&&'Medium',p.heavy&&'Heavy',p.shield&&'Shields'].filter(Boolean);
+      return `<div style="padding:4px 0;border-bottom:1px solid rgba(201,168,76,.07);display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold2);min-width:90px">${cls}</span><span style="font-size:.82rem;color:var(--parch)">${types.join(', ')||'None'}</span></div>`;
+    }).join('');
+    sections.push(`<div style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold2);letter-spacing:.06em;padding:10px 0 6px;border-bottom:1px solid rgba(201,168,76,.2);margin:14px 0 6px">ARMOR PROFICIENCIES BY CLASS</div>${armorRows}`);
+  }
+  if (!q || 'tool kit'.includes(q)) {
+    const tools = [
+      {n:"Thieves' Tools",d:'Pick locks, disarm traps. Required for Rogue-style activities.'},
+      {n:'Herbalism Kit',d:'Brew potions of healing, identify plants, craft antitoxin.'},
+      {n:"Alchemist's Supplies",d:'Craft alchemical items including fire, acid, healing compounds.'},
+      {n:"Tinker's Tools",d:'Build and repair small mechanical devices and constructs.'},
+      {n:"Smith's Tools",d:'Forge and repair metal items, weapons, and armor.'},
+      {n:"Cartographer's Tools",d:'Create accurate maps. Navigate wilderness and dungeons.'},
+      {n:'Disguise Kit',d:'Create convincing disguises to impersonate others.'},
+      {n:"Poisoner's Kit",d:'Create, identify, and apply poisons.'},
+      {n:'Musical Instrument',d:'Perform music; Bards can use as spellcasting focus.'},
+      {n:'Gaming Set',d:'Play card games, dice, chess variants. Social utility.'},
+    ].filter(t => !q || t.n.toLowerCase().includes(q) || t.d.toLowerCase().includes(q));
+    if (tools.length) {
+      const toolCards = tools.map(t => compCard('tool-'+t.n.replace(/[\s']/g,'_'),
+        `<div style="font-family:'Cinzel',serif;color:var(--gold);font-size:.88rem">${t.n}</div><div style="font-size:.8rem;color:var(--parch2);margin-top:2px">${t.d}</div>`,
+        `<div style="font-size:.84rem;color:var(--parch2);margin-top:10px;line-height:1.6">${t.d}<br><br><strong style="color:var(--gold2)">Proficiency:</strong> Roll d20 + relevant ability mod + proficiency bonus.</div>`
+      )).join('');
+      sections.push(`<div style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold2);letter-spacing:.06em;padding:10px 0 6px;border-bottom:1px solid rgba(201,168,76,.2);margin:14px 0 6px">TOOLS & KITS</div>${toolCards}`);
+    }
+  }
+  if (!sections.length) return noResults(q);
+  return sections.join('');
 }
 
 /* =============================================================================

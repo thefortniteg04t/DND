@@ -3369,6 +3369,11 @@ async function doRegister() {
 
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 
+// Ensure inline onclick handlers always resolve in browser global scope
+if (typeof window !== 'undefined') {
+  Object.assign(window, { switchAuthTab, doLogin, doGuest, doRegister });
+}
+   
 function transitionToApp() {
   sessionStorage.setItem('tl_session_user', currentUser);
   const auth = document.getElementById('auth-page');

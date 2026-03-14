@@ -3217,12 +3217,12 @@ function initFirebase() {
 
 // ── User auth (stored in Firebase /users/) ──────────────────────────────────
 async function getUsers() {
-  if (!db) return JSON.parse(localStorage.getItem('tl_users') || '{}');
+  if (!db) return safeParseJSON(localStorage.getItem('tl_users'), {});
   try {
     const snap = await db.ref('users').get();
     return snap.exists() ? snap.val() : {};
   } catch(e) {
-    return JSON.parse(localStorage.getItem('tl_users') || '{}');
+    return safeParseJSON(localStorage.getItem('tl_users'), {});
   }
 }
 async function saveUsers(u) {
@@ -3234,8 +3234,8 @@ async function saveUsers(u) {
 
 // ── Per-user character + campaign data ─────────────────────────────────────
 function getUserData() {
-  // Return local cache immediately (Firebase updates it in background)
-  return JSON.parse(localStorage.getItem('tl_data_' + currentUser) || '{"characters":[],"campaigns":[]}');
+// Return normalized local cache immediately (Firebase updates it in background)
+  return normalizeUserData(safeParseJSON(localStorage.getItem('tl_data_' + currentUser), null));
 }
 async function saveUserData(d) {
   localStorage.setItem('tl_data_' + currentUser, JSON.stringify(d));
@@ -3262,6 +3262,21 @@ function startFirebaseSync() {
 function sanitizeKey(str) {
   return (str || 'guest').replace(/[.#$\[\]]/g, '_');
 }
+function safeParseJSON(raw, fallback) {
+  try {
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeUserData(data) {
+  const base = (data && typeof data === 'object') ? data : {};
+  if (!Array.isArray(base.characters)) base.characters = [];
+  if (!Array.isArray(base.campaigns))  base.campaigns  = [];
+  return base;
+}
 
 // ── Load user data from Firebase on login (merge with local) ───────────────
 async function loadUserDataFromFirebase() {
@@ -3270,9 +3285,9 @@ async function loadUserDataFromFirebase() {
   try {
     const snap = await db.ref('userData/' + key).get();
     if (snap.exists()) {
-      const remote = snap.val();
+      const remote = normalizeUserData(snap.val());
       // Merge: prefer remote, but keep any local chars not yet synced
-      const local  = JSON.parse(localStorage.getItem('tl_data_' + currentUser) || '{"characters":[],"campaigns":[]}');
+      const local  = normalizeUserData(safeParseJSON(localStorage.getItem('tl_data_' + currentUser), null));
       const remoteIds = new Set((remote.characters||[]).map(c=>c.id));
       const localOnly = (local.characters||[]).filter(c => !remoteIds.has(c.id));
       if (localOnly.length) {

@@ -947,6 +947,9 @@ textarea { resize: vertical; min-height: 80px; }
             <optgroup label="Homebrew / Setting-Specific">
               <option>Centaur</option><option>Fairy</option><option>Harengon</option>
               <option>Owlfolk</option><option>Rabbitfolk</option>
+              <option>Boneborn</option><option>Thornkin</option><option>Duskborn</option>
+              <option>Cindergraft</option><option>Voidtouched</option><option>Sporekin</option>
+              <option>Glassling</option><option>Ivyborn</option>
             </optgroup>
           </select>
           <div id="race-info" class="muted" style="margin-top:-10px;margin-bottom:12px;font-size:.82rem"></div>
@@ -962,6 +965,10 @@ textarea { resize: vertical; min-height: 80px; }
             <option>Cleric</option><option>Druid</option><option>Fighter</option>
             <option>Monk</option><option>Paladin</option><option>Ranger</option>
             <option>Rogue</option><option>Sorcerer</option><option>Warlock</option><option>Wizard</option>
+            <optgroup label="Homebrew Classes">
+              <option>Osteomancer</option><option>Warden</option><option>Plaguebearer</option>
+              <option>Bloodhunter</option><option>Psion</option>
+            </optgroup>
           </select>
           <div id="class-info" class="muted" style="margin-top:-10px;margin-bottom:12px;font-size:.82rem"></div>
           <label>Subclass</label>
@@ -1426,6 +1433,27 @@ const CLASS_DATA = {
           'School of Necromancy','School of Transmutation','Bladesinging',
           'War Magic','Chronurgy Magic','Graviturgy Magic','Order of Scribes',
           'School of Artifice','School of Psionics','Lore Mastery']
+  },
+  // ── HOMEBREW FULL CLASSES ─────────────────────────────────────────────
+  Osteomancer: {
+    hd:8, saves:['CON','INT'], spellAb:'INT', isHalf:false,
+    subs:['Path of the Marrow','Path of the Grave Knight','Path of the Boneshaper','Path of the Reliquary']
+  },
+  Warden: {
+    hd:10, saves:['STR','WIS'], spellAb:'WIS', isHalf:true,
+    subs:['Warden of the Wild','Warden of the Depths','Warden of the Citadel','Warden of the Storm']
+  },
+  Plaguebearer: {
+    hd:8, saves:['CON','CHA'], spellAb:'CHA', isHalf:false,
+    subs:['Pestilent Sovereign','Rot Disciple','Fever Dancer','Miasma Broker']
+  },
+  Bloodhunter: {
+    hd:10, saves:['DEX','INT'], spellAb:'INT', isHalf:false,
+    subs:['Order of the Ghostslayer','Order of the Profane Soul','Order of the Mutant','Order of the Lycan']
+  },
+  Psion: {
+    hd:6, saves:['INT','WIS'], spellAb:'INT', isHalf:false,
+    subs:['Order of the Awakened','Order of the Immortal','Order of the Nomad','Order of the Soul Knife','Order of the Wu Jen']
   }
 };
 
@@ -1583,6 +1611,32 @@ const SUBCLASS_INFO = {
   'Lore Mastery':            '(UA) Lore Master: change damage type of spells. Spell Secrets: alter saving throw type. Alchemical Casting: spend spell slots to empower spells (widened area, longer duration, extra damage). Unerring Accuracy.',
   'Revived':                 '(Van Richten\'s Guide) Tokens of Past Lives: gain proficiency from past life each rest. Bolts from the Blue: reaction to avoid death, gain temp HP. Audience with Death: speak with dying creatures. Ethereal Jaunt: become incorporeal.',
   'Investigator':            '(Ravnica) Eye for Weakness: bonus sneak attack dice on first hit per turn vs unseen target. Probing Investigation: bonus action Insight check. Underworld Connections: gather information from criminal contacts. Versatile Crimestopper.',
+  // ── OSTEOMANCER SUBCLASSES ────────────────────────────────────────────
+  'Path of the Marrow':      '(Homebrew) Osteomancer subclass focused on bone manipulation as offense. Bone Spear: launch a bone spike at range (1d10 piercing). Osseous Armor: raise bone plating from fallen foes for temporary AC. Skeletal Burst: shatter a nearby skeleton into a damaging explosion.',
+  'Path of the Grave Knight':'(Homebrew) Osteomancer subclass that raises and commands skeletal undead. Raise Servant: animate a skeletal warrior from any corpse as a bonus action. Death March: your undead gain bonus movement and attacks. Bone Throne: become surrounded by an aura of animated bones that protect and retaliate.',
+  'Path of the Boneshaper':  '(Homebrew) Osteomancer focused on reshaping bone for utility and control. Osseous Craft: fashion tools, weapons, and structures from bone as an action. Cage of Ribs: restrain an enemy in a ribcage erupting from the ground (STR save). Living Architecture: reshape the battlefield using bone terrain.',
+  'Path of the Reliquary':   '(Homebrew) Osteomancer who channels power through sacred bones of fallen heroes. Relic Communion: attune to a bone fragment to gain its bearer\'s skill proficiency. Sacred Marrow: once per rest, spend a relic charge to cast a spell without using a slot. Ancestral Chorus: call the voices of the dead for guidance (+1d6 to checks).',
+  // ── WARDEN SUBCLASSES ─────────────────────────────────────────────────
+  'Warden of the Wild':      '(Homebrew) Warden subclass bonded to forest and beasts. Nature\'s Sentinel: advantage on Perception in natural environments. Beast Bond: a beast companion shares your hit points and acts on your turn. Verdant Surge: when you take damage, vines erupt and slow the attacker.',
+  'Warden of the Depths':    '(Homebrew) Warden subclass attuned to the sea and underground. Darktide Sight: darkvision 120 ft and Truesight 30 ft while submerged. Crushing Current: ranged water lash (2d8 bludgeoning, pushed 15 ft). Abyssal Ward: resistance to cold and pressure damage.',
+  'Warden of the Citadel':   '(Homebrew) Warden subclass devoted to protecting civilized places. Shield of Hearth: +2 AC to all allies within 10 ft as a reaction. Stoneguard Stance: immunity to forced movement while standing on stone or metal. Rally the Defenders: bonus action inspiring shout that removes the frightened condition from allies.',
+  'Warden of the Storm':     '(Homebrew) Warden subclass channeling weather and sky. Storm Step: teleport 30 ft in a flash of lightning as a bonus action. Thunder\'s Reach: weapon attacks deal bonus 1d6 lightning within range of 60 ft. Eye of the Tempest: immunity to effects of natural weather; advantage on CON saves.',
+  // ── PLAGUEBEARER SUBCLASSES ───────────────────────────────────────────
+  'Pestilent Sovereign':     '(Homebrew) Commands armies of disease. Plague Crown: create a contagion zone — creatures starting a turn inside make CON saves or contract a debilitating illness. Infectious Command: infected creatures become thralls that obey simple orders. Epidemic Surge: spread an active disease to all creatures within 30 ft.',
+  'Rot Disciple':            '(Homebrew) Personal corruption and decay. Necrotic Flesh: natural armor 12 + CON mod; immune to disease. Wasting Touch: melee attack deals 2d8 necrotic and reduces target\'s max HP until their next long rest. Corpse Bloom: when a creature dies within 30 ft, gain temp HP = your CON mod.',
+  'Fever Dancer':            '(Homebrew) Uses sickness as fuel for ecstatic movement. Fevered Grace: when you\'re below half HP, +10 ft speed and advantage on DEX saves. Delirium Strike: on hit, target makes CON save or has disadvantage on its next attack. Euphoric Plague: charmed and poisoned condition simultaneously; target attacks at random.',
+  'Miasma Broker':           '(Homebrew) Trades in vapors and gases. Toxic Haze: create a 20-ft radius cloud of poison gas as an action (CON save or poisoned). Barter of Blight: offer enemies a "deal" — take poison damage willingly to gain a benefit, or refuse and save. Choking Mist: creatures in your haze have their movement speed halved.',
+  // ── BLOOD HUNTER SUBCLASSES ───────────────────────────────────────────
+  'Order of the Ghostslayer':'(Critical Role — Matt Mercer) Rite of the Dawn: Crimson Rite deals radiant damage and suppresses undead regeneration. Ethereal Step: enter the Border Ethereal briefly as a bonus action. Vengeful Spirit: when you die, your spirit remains for 1 minute to continue fighting.',
+  'Order of the Profane Soul':'(Critical Role) Pact Magic: gain warlock spell slots and cantrips (2 patrons available). Mystical Nitro: add your Hemocraft die to spell damage. Runic Ward: reduce damage with blood rune reaction.',
+  'Order of the Mutant':     '(Critical Role) Mutagencraft: brew mutagens each long rest — Potency (+STR), Swiftness (+DEX), Toughness (+CON), Sagacity (+INT), Perception (+WIS), Unbreakable (+resistance). Mutagens have a Mutagen Flaw (disadvantage on related saves while active).',
+  'Order of the Lycan':      '(Critical Role) Hybrid Transformation: partially transform into a bestial hybrid. Feral Might: +1d6 to STR-based attacks while transformed. Bloodlust: when you drop to 0 HP while transformed, make a WIS save or attack the nearest creature.',
+  // ── PSION SUBCLASSES ─────────────────────────────────────────────────
+  'Order of the Awakened':   '(UA Psionics) Expanded Disciplines: primarily telepathy and divination. Psionic Investigation: advantage on Insight and Investigation. Unopened Mind: immunity to being read by Detect Thoughts or mind-reading magic.',
+  'Order of the Immortal':   '(UA Psionics) Psi-enhanced body. Psychic Surge: when hit, can spend a psionic die to reduce damage. Surge of Health: once per rest, regain 2× your CON modifier in HP as a reaction. Living Aura: creatures within 10 ft have disadvantage on saves vs your disciplines.',
+  'Order of the Nomad':      '(UA Psionics) Teleportation and spatial manipulation. Psionic Wayfarer: teleport up to 30 ft as bonus action (psionic die cost). Step Through: pass through solid objects for one move per turn. Planar Anchor: prevent one creature from teleporting (WIS save).',
+  'Order of the Soul Knife':  '(UA Psionics) Blade of psychic force. Psychic Blades: create two finesse, thrown (60 ft) psychic blades from nothing. Homing Strikes: add a psionic die to a missed attack roll. Rend Mind: on sneak attack, force a WIS save or stun.',
+  'Order of the Wu Jen':     '(UA Psionics) Elemental psionic caster. Elemental Attunement: choose an element — acid, cold, fire, lightning, or thunder — and your disciplines deal that damage type. Wild Talent Surge: when you roll maximum on a psionic die, gain an extra use of your action.'
 };
 
 
@@ -2573,6 +2627,191 @@ const RACE_TRAITS = {
     }
   },
 
+  // ── HOMEBREW RACES ────────────────────────────────────────────────────
+  'Boneborn': {
+    base: [
+      {n:'Speed',               d:'Walking speed 30 ft.'},
+      {n:'Natural Armor',       d:'AC = 13 + CON modifier when not wearing armor. Your bony exterior makes you naturally tough.'},
+      {n:'Constructed Resilience',d:'You are immune to disease and the poisoned condition. You cannot be magically put to sleep.'},
+      {n:'Bone Mend',           d:'As a bonus action, you can spend your own life force to knit your bones back together. Regain 1d8 + CON modifier HP. Usable once per short or long rest.'},
+      {n:'Osseous Sense',       d:'You can detect the presence of skeletal or undead creatures within 30 ft without sight (tremorsense through bone vibration).'},
+      {n:'Ability Score Increase',d:'+2 CON, +1 INT.'},
+      {n:'Languages',           d:'Common and one language of your choice (often Undercommon or Draconic).'},
+    ],
+    subraces: {
+      'Standard Boneborn':          [{n:'All Base Traits', d:'Natural Armor, Bone Mend, Constructed Resilience, Osseous Sense.'}],
+      'Boneborn of the Tomb':       [
+        {n:'Tomb Dust',             d:'Once per rest, exhale a cloud of bone dust in a 10-ft cone. Creatures make a CON save (DC 8+CON+PB) or be blinded until the end of their next turn.'},
+        {n:'Death\'s Hush',         d:'You have advantage on saves against being frightened by undead creatures.'},
+      ],
+      'Boneborn of the Battlefield':[
+        {n:'Battle-Scarred',        d:'Your Natural Armor increases to 14 + CON modifier, but your bone structure is visibly warped and scarred from past conflict.'},
+        {n:'Last Stand',            d:'When you are reduced to 0 HP, you can use your reaction to make one weapon attack before falling unconscious. 1/long rest.'},
+      ],
+    }
+  },
+
+  'Thornkin': {
+    base: [
+      {n:'Speed',               d:'Walking speed 30 ft.'},
+      {n:'Natural Armor',       d:'AC = 12 + DEX modifier. Your bark-like skin and embedded thorns offer natural protection.'},
+      {n:'Thorn Barb',          d:'When a creature within 5 ft hits you with a melee attack, you can use your reaction to deal 1d4 piercing damage to them (thorns pierce back).'},
+      {n:'Rooted Resilience',   d:'Advantage on STR saving throws against forced movement (being pushed, pulled, or knocked prone).'},
+      {n:'Nature\'s Kinship',   d:'You have advantage on Animal Handling and Nature checks. Plants of Tiny or Small size do not impede your movement.'},
+      {n:'Ability Score Increase',d:'+2 WIS, +1 CON.'},
+      {n:'Languages',           d:'Common and Sylvan.'},
+    ],
+    subraces: {
+      'Standard Thornkin':          [{n:'All Base Traits', d:'Natural Armor, Thorn Barb, Rooted Resilience, Nature\'s Kinship.'}],
+      'Thornkin of the Deep Wood':  [
+        {n:'Verdant Camouflage',    d:'Advantage on Stealth checks while in forested or heavily vegetated terrain.'},
+        {n:'Thicket Form',          d:'Once per rest, create a 10-ft radius of difficult terrain (thorny undergrowth) centered on yourself as a bonus action. Lasts 1 minute.'},
+      ],
+      'Thornkin of the Blighted Fen':[
+        {n:'Blight Thorns',         d:'Your Thorn Barb reaction now deals 1d4 piercing + 1d4 poison damage.'},
+        {n:'Miasma Resistance',     d:'Resistance to poison damage. Advantage on saves vs disease.'},
+      ],
+    }
+  },
+
+  'Duskborn': {
+    base: [
+      {n:'Speed',               d:'Walking speed 35 ft.'},
+      {n:'Darkvision',          d:'90 ft darkvision. You see in darkness as if it were dim light and in dim light as if it were bright light.'},
+      {n:'Shadow Meld',         d:'While in dim light or darkness, you can use a bonus action to become heavily obscured until you move, attack, or cast a spell.'},
+      {n:'Twilight Resilience', d:'Resistance to necrotic damage.'},
+      {n:'Child of the Between',d:'You don\'t need to sleep. Instead, you enter a twilight trance for 4 hours, gaining the benefits of a long rest. You are aware of your surroundings during this state.'},
+      {n:'Ability Score Increase',d:'+2 DEX, +1 CHA.'},
+      {n:'Languages',           d:'Common and Elvish (or Undercommon).'},
+    ],
+    subraces: {
+      'Standard Duskborn':      [{n:'All Base Traits', d:'Darkvision 90 ft, Shadow Meld, Twilight Resilience, trance rest.'}],
+      'Duskborn of the Void':   [
+        {n:'Void Whispers',     d:'Once per rest, cast Detect Thoughts (no slot, WIS-based) as if it were darkness rather than direct mental contact — you hear surface thoughts from 60 ft away.'},
+        {n:'Nullshroud',        d:'Resistance to psychic damage in addition to necrotic.'},
+      ],
+      'Duskborn of the Gloaming':[
+        {n:'Gloaming Shift',    d:'Once per rest as bonus action: become invisible until start of your next turn. Ends if you attack or cast a spell.'},
+        {n:'Fey Lineage',       d:'Advantage on saves vs charm. Immune to magical sleep.'},
+      ],
+    }
+  },
+
+  'Cindergraft': {
+    base: [
+      {n:'Speed',               d:'Walking speed 30 ft.'},
+      {n:'Fire Resistance',     d:'Resistance to fire damage. You are also immune to the effects of extreme heat and cannot be harmed by nonmagical fire environments.'},
+      {n:'Ember Forge',         d:'As a bonus action, you superheat a weapon or tool you are holding. For 1 minute, it deals +1d6 fire damage on hit. Usable once per short or long rest.'},
+      {n:'Constructed Form',    d:'You do not need to eat or drink. You are immune to disease. You require only 4 hours of inert maintenance to gain the benefits of a long rest.'},
+      {n:'Smoldering Presence', d:'You shed dim light in a 5-ft radius. This cannot be suppressed without covering yourself entirely.'},
+      {n:'Ability Score Increase',d:'+1 STR, +1 CON, +1 INT.'},
+      {n:'Languages',           d:'Common and one language of your choice.'},
+    ],
+    subraces: {
+      'Standard Cindergraft':   [{n:'All Base Traits', d:'Fire Resistance, Ember Forge, Constructed Form, Smoldering Presence.'}],
+      'Cindergraft Forgeborn':  [
+        {n:'Forge Mastery',     d:'Proficiency with smith\'s tools and two martial weapons. Double proficiency bonus on smith\'s tool checks.'},
+        {n:'Molten Core',       d:'When you are reduced to half your HP, your Smoldering Presence increases to bright light 10 ft and your Ember Forge damage increases to 1d8 fire.'},
+      ],
+      'Cindergraft Ashwalker':  [
+        {n:'Ash Cloud',         d:'Once per rest as action: exhale a 15-ft cone of ash. Creatures make DEX save (8+CON+PB) or be blinded until end of their next turn.'},
+        {n:'Ember Step',        d:'When you Dash, you leave a trail of embers. Creatures who enter a space you occupied this turn take 1d4 fire damage (ends start of your next turn).'},
+      ],
+    }
+  },
+
+  'Voidtouched': {
+    base: [
+      {n:'Speed',               d:'Walking speed 30 ft.'},
+      {n:'Darkvision',          d:'60 ft darkvision.'},
+      {n:'Void Step',           d:'Once per short or long rest as a bonus action, you tear a rift in space and teleport up to 15 ft to an unoccupied space you can see.'},
+      {n:'Anomalous Form',      d:'Once per day when you cast a spell of 1st level or higher, roll a d6. On a 1, a minor Wild Magic surge occurs (DM determines effect), but you also gain 1d4 + INT mod temp HP from the chaotic energy.'},
+      {n:'Planar Awareness',    d:'You always know which plane of existence you are on. You have advantage on Arcana checks related to planes and dimensional travel.'},
+      {n:'Ability Score Increase',d:'+2 INT, +1 WIS.'},
+      {n:'Languages',           d:'Common, Deep Speech, and one other language.'},
+    ],
+    subraces: {
+      'Standard Voidtouched':   [{n:'All Base Traits', d:'Darkvision, Void Step, Anomalous Form, Planar Awareness.'}],
+      'Voidtouched Riftborn':   [
+        {n:'Rift Anchor',       d:'Void Step range increases to 30 ft. After teleporting, the origin and destination spaces are lightly obscured by crackling void energy until end of your next turn.'},
+        {n:'Gravity Distortion',d:'Once per rest as reaction when targeted by an attack: impose disadvantage on that attack roll (your space briefly warps).'},
+      ],
+      'Voidtouched Nullwalker': [
+        {n:'Null Field',        d:'Once per rest as action: create a 10-ft radius sphere of anti-magic for 1 round. Spells of 3rd level or lower cast inside automatically fail.'},
+        {n:'Absorption',        d:'Resistance to force and psychic damage.'},
+      ],
+    }
+  },
+
+  'Sporekin': {
+    base: [
+      {n:'Speed',               d:'Walking speed 25 ft.'},
+      {n:'Darkvision',          d:'30 ft darkvision (bioluminescent mycelium in your skin).'},
+      {n:'Spore Cloud',         d:'As a reaction when you take melee damage, release a 5-ft radius spore burst. Creatures in the area make a CON save (DC 8 + CON + PB) or are blinded until end of their next turn. 1/rest.'},
+      {n:'Rot Sense',           d:'You can sense the presence of undead creatures and plant creatures within 30 ft, even through walls (you feel the decay or root networks).'},
+      {n:'Fungal Fortitude',    d:'Advantage on CON saves vs poison and disease. Resistance to poison damage.'},
+      {n:'Ability Score Increase',d:'+2 CON, +1 WIS.'},
+      {n:'Languages',           d:'Common and Undercommon.'},
+    ],
+    subraces: {
+      'Standard Sporekin':  [{n:'All Base Traits', d:'Darkvision 30 ft, Spore Cloud, Rot Sense, Fungal Fortitude.'}],
+      'Sporekin Deathcap':  [
+        {n:'Death\'s Bloom',d:'When a creature dies within 20 ft of you, you gain temp HP = PB as mycelium briefly feeds on the death energy.'},
+        {n:'Toxic Spores',  d:'Your Spore Cloud now also poisons creatures that fail the save (poisoned until end of their next turn).'},
+      ],
+      'Sporekin Glowcap':   [
+        {n:'Bioluminescence',d:'You can shed bright light in a 10-ft radius and dim light for another 10 ft. Toggle as bonus action.'},
+        {n:'Healing Spores', d:'Once per rest as action, release healing spores — you and all creatures of your choice within 10 ft regain 1d6 + WIS modifier HP.'},
+      ],
+    }
+  },
+
+  'Glassling': {
+    base: [
+      {n:'Speed',               d:'Walking speed 35 ft.'},
+      {n:'Natural Armor',       d:'AC = 12 + DEX modifier. Your crystalline body refracts impacts.'},
+      {n:'Refract Light',       d:'Once per short or long rest, as a reaction when a creature attacks you, you scatter light into its eyes — it makes its attack roll with disadvantage.'},
+      {n:'Crystalline Mind',    d:'Immunity to magical sleep. Advantage on saves vs illusion spells and being charmed.'},
+      {n:'Prismatic Resonance', d:'When you take radiant damage, you absorb a fraction of it — gain temp HP = half the radiant damage dealt.'},
+      {n:'Ability Score Increase',d:'+2 DEX, +1 INT.'},
+      {n:'Languages',           d:'Common and Terran (or one other language).'},
+    ],
+    subraces: {
+      'Standard Glassling':   [{n:'All Base Traits', d:'Natural Armor 12+DEX, Refract Light, Crystalline Mind, Prismatic Resonance.'}],
+      'Glassling Prism':      [
+        {n:'Prismatic Beam',  d:'Once per rest as action: project a 30-ft line of refracted light (ranged spell attack, INT-based, 2d8 radiant). Hit targets are briefly blinded (disadvantage on next attack roll).'},
+        {n:'Light Step',      d:'You have advantage on Stealth checks in brightly lit environments (your transparency blends with the light).'},
+      ],
+      'Glassling Shadowglass':[
+        {n:'Dark Refraction', d:'In dim light or darkness, your body becomes nearly invisible. Advantage on Stealth checks while in dim light or darkness.'},
+        {n:'Shadow Absorption',d:'Resistance to necrotic damage. When you take necrotic damage, gain temp HP = your INT modifier.'},
+      ],
+    }
+  },
+
+  'Ivyborn': {
+    base: [
+      {n:'Speed',               d:'Walking speed 30 ft. Climb speed 20 ft (you can grow handholds from your own body).'},
+      {n:'Entangle Touch',      d:'Once per short or long rest, you can attempt to restrain a creature you touch. The target makes a STR save (DC 8 + WIS + PB) or is restrained by vines for 1 minute (STR save each turn to escape).'},
+      {n:'Speak with Plants',   d:'You can communicate simple ideas with plants as per Speak with Animals, but for vegetation. You can feel disturbances in root networks within 60 ft.'},
+      {n:'Regeneration',        d:'While in direct sunlight, you regain 1 HP at the start of each of your turns (minimum 1 HP) as long as you have at least 1 HP.'},
+      {n:'Verdant Resilience',  d:'Resistance to poison damage. Advantage on saves vs poison and disease.'},
+      {n:'Ability Score Increase',d:'+2 WIS, +1 DEX.'},
+      {n:'Languages',           d:'Common and Sylvan.'},
+    ],
+    subraces: {
+      'Standard Ivyborn':              [{n:'All Base Traits', d:'Climb 20 ft, Entangle Touch, Speak with Plants, Regeneration, Verdant Resilience.'}],
+      'Ivyborn of the Ancient Grove':  [
+        {n:'Grove Guardian',   d:'While in a natural environment, advantage on Perception and Survival checks. You can\'t be surprised in natural terrain.'},
+        {n:'Ancient Roots',    d:'Once per rest, plant your feet and draw power from the earth. Until end of your next turn: +2 AC, immunity to forced movement, and your Entangle Touch recharges.'},
+      ],
+      'Ivyborn of the City Ruin':      [
+        {n:'Urban Ivy',        d:'Climb speed increases to 30 ft. You can climb on sheer surfaces and upside down on ceilings without a check.'},
+        {n:'Crumbling Growth', d:'Once per rest as action: cause vines to erupt in a 10-ft radius — it becomes difficult terrain for 1 minute. Creatures in the area at creation make a DEX save or are restrained until start of their next turn.'},
+      ],
+    }
+  },
+
 };
 
 
@@ -2633,6 +2872,15 @@ const SUBRACE_DATA = {
   'Harengon':            ['Standard Harengon'],
   'Owlfolk':             ['Standard Owlfolk', 'Snowy Owlfolk', 'Masked Owlfolk', 'Barred Owlfolk'],
   'Rabbitfolk':          ['Standard Rabbitfolk'],
+  // ── HOMEBREW RACES ────────────────────────────────────────────────────
+  'Boneborn':            ['Standard Boneborn','Boneborn of the Tomb','Boneborn of the Battlefield'],
+  'Thornkin':            ['Standard Thornkin','Thornkin of the Deep Wood','Thornkin of the Blighted Fen'],
+  'Duskborn':            ['Standard Duskborn','Duskborn of the Void','Duskborn of the Gloaming'],
+  'Cindergraft':         ['Standard Cindergraft','Cindergraft Forgeborn','Cindergraft Ashwalker'],
+  'Voidtouched':         ['Standard Voidtouched','Voidtouched Riftborn','Voidtouched Nullwalker'],
+  'Sporekin':            ['Standard Sporekin','Sporekin Deathcap','Sporekin Glowcap'],
+  'Glassling':           ['Standard Glassling','Glassling Prism','Glassling Shadowglass'],
+  'Ivyborn':             ['Standard Ivyborn','Ivyborn of the Ancient Grove','Ivyborn of the City Ruin'],
 };
 
 // Background skill proficiency auto-apply map
@@ -2680,7 +2928,13 @@ const CLASS_ARMOR_PROFS = {
   Rogue:      {light:true, medium:false,heavy:false, shield:false},
   Sorcerer:   {light:false,medium:false,heavy:false, shield:false},
   Warlock:    {light:true, medium:false,heavy:false, shield:false},
-  Wizard:     {light:false,medium:false,heavy:false, shield:false},
+  Wizard:      {light:false,medium:false,heavy:false, shield:false},
+  // ── HOMEBREW CLASSES ──────────────────────────────────────────────────
+  Osteomancer: {light:true, medium:true, heavy:false, shield:false},
+  Warden:      {light:true, medium:true, heavy:true,  shield:true},
+  Plaguebearer:{light:true, medium:false,heavy:false, shield:false},
+  Bloodhunter: {light:true, medium:true, heavy:false, shield:false},
+  Psion:       {light:false,medium:false,heavy:false, shield:false},
 };
 
 /* =============================================================================
@@ -2743,6 +2997,15 @@ const RACE_DATA = {
   'Harengon':            {bonuses:{},speed:30,info:'+1 to two stats. Hare-Trigger: add PB to initiative. Leporine Senses: Perception proficiency. Lucky Footwork: reaction to negate failure on DEX save. Rabbit Hop: jump PB × 5ft as bonus action.'},
   'Owlfolk':             {bonuses:{},speed:30,info:'+1 to two stats. Fly speed 30ft (no heavy armor). Darkvision 120ft. Silent Feathers: proficiency in Stealth. Keen Senses: proficiency in Perception. Maneuverability: no disadvantage in tight spaces while flying.'},
   'Rabbitfolk':          {bonuses:{},speed:35,info:'+1 to two stats. Speed 35. Lucky Footwork (reaction to negate DEX save fail). Leporine Senses (Perception prof). Rabbit Hop (jump bonus action PB × 5ft/day).'},
+  // ── HOMEBREW / SETTING-SPECIFIC RACES ────────────────────────────────
+  'Boneborn':            {bonuses:{CON:2,INT:1},speed:30,info:'+2 CON +1 INT. Constructed of living bone. Natural Armor 13+CON. Immune to disease and poison. Bone Mend: regain 1d8+CON HP once per short rest as bonus action.'},
+  'Thornkin':            {bonuses:{WIS:2,CON:1},speed:30,info:'+2 WIS +1 CON. Plant-humanoid hybrid. Natural armor 12+DEX. Thorn Barb: reaction melee retaliation (1d4 piercing). Rooted Resilience: advantage on STR saves vs forced movement.'},
+  'Duskborn':            {bonuses:{DEX:2,CHA:1},speed:35,info:'+2 DEX +1 CHA. Twilight-touched humanoid. Darkvision 90 ft. Shadow Meld: hide in dim light as bonus action. Twilight Resilience: resistance to necrotic damage.'},
+  'Cindergraft':         {bonuses:{STR:1,CON:1,INT:1},speed:30,info:'+1 STR +1 CON +1 INT. Constructed humanoid with fire-fused parts. Fire Resistance. Ember Forge: once per rest, heat a held weapon to deal +1d6 fire for 1 minute. Immune to extreme heat effects.'},
+  'Voidtouched':         {bonuses:{INT:2,WIS:1},speed:30,info:'+2 INT +1 WIS. Warped by planar energy. Darkvision 60 ft. Void Step: teleport up to 15 ft as bonus action 1/rest. Anomalous Form: once per day roll on the Wild Magic table when you cast a spell.'},
+  'Sporekin':            {bonuses:{CON:2,WIS:1},speed:25,info:'+2 CON +1 WIS. Fungal humanoid. Spore Cloud: reaction — 5-ft radius spore burst, creatures make CON save or blinded until end of their next turn (1/rest). Rot Sense: detect undead and plant creatures within 30 ft. Darkvision 30 ft.'},
+  'Glassling':           {bonuses:{DEX:2,INT:1},speed:35,info:'+2 DEX +1 INT. Crystalline construct. Refract Light: once per rest, impose disadvantage on one attack roll as reaction (scatter light into attacker\'s eyes). Natural Armor 12+DEX. Immune to sleep magic.'},
+  'Ivyborn':             {bonuses:{WIS:2,DEX:1},speed:30,info:'+2 WIS +1 DEX. Vine-wrapped nature spirit. Entangle Touch: grapple attempt vines sprout and restrain target (STR save DC = 8+WIS+PB) 1/rest. Speak with Plants: as Speak with Animals but for plants. Regeneration: regain 1 HP per turn in natural sunlight.'},
 };
 
 const BG_DATA = {
@@ -2794,7 +3057,10 @@ const ASI_LEVELS = {
   Cleric:[4,8,12,16,19],    Druid:[4,8,12,16,19],     Fighter:[4,6,8,12,14,16,19],
   Monk:[4,8,12,16,19],      Paladin:[4,8,12,16,19],   Ranger:[4,8,12,16,19],
   Rogue:[4,8,10,12,16,18,19],Sorcerer:[4,8,12,16,19], Warlock:[4,8,12,16,19],
-  Wizard:[4,8,12,16,19]
+  Wizard:[4,8,12,16,19],
+  // ── HOMEBREW CLASSES ──────────────────────────────────────────────────
+  Osteomancer:[4,8,12,16,19], Warden:[4,8,12,16,19],   Plaguebearer:[4,8,12,16,19],
+  Bloodhunter:[4,8,12,16,19], Psion:[4,8,12,16,19],
 };
 
 /* =============================================================================
@@ -3071,6 +3337,111 @@ const CLASS_FEATURES = {
     18:['Magic Item Master (attune to up to 6 items)','Infuse Item: learn 2 more formulae, infuse 8 items'],
     19:['ASI'],
     20:['Soul of Artifice (+1 to all saving throws per attuned magic item; reaction when reduced to 0 HP: drop to 1 HP instead)']
+  },
+  // ── HOMEBREW CLASS FEATURES ───────────────────────────────────────────
+  Osteomancer: {
+    1:['Bone Sense (detect skeletal/undead creatures within 30 ft; feel bone structure through touch)','Osseous Arts (manipulate bone as an action: shape, sharpen, or harden bone matter within 10 ft)','Spellcasting (INT-based, prepare INT mod + Osteomancer level spells)'],
+    2:['Bone Armor (bonus action: raise protective plating from nearby bone for +2 AC for 1 min; 2/rest)','Marrow Tap (touch a corpse or bone to regain 1d8 + INT mod HP; 1/rest)'],
+    3:['Osseous Path (subclass)'],
+    4:['ASI'],
+    5:['Extra Attack (attack twice per Attack action)','Animate Bone (action: animate one Medium or smaller skeleton as a servant; uses slot; lasts 1 hr)'],
+    6:['Path Feature','Skeletal Resilience (resistance to necrotic damage; immunity to being frightened by undead)'],
+    7:['Bone Cage (action: restrain one creature within 30 ft in a rib cage of bone; STR save DC = 8+INT+PB; 1/rest)'],
+    8:['ASI'],
+    9:['Osseous Mastery (reshape bone terrain: create walls, bridges, or barriers of bone as action; 10-ft cube; 1/long rest)'],
+    10:['Path Feature','Marrow Well (regain 1 spent spell slot on short rest, max 3rd level)'],
+    11:['Bone Storm (action: 20-ft radius shower of bone shards; DEX save or 4d8 piercing; 1/long rest)'],
+    12:['ASI'],
+    13:['Path Feature'],
+    14:['Living Skeleton (you can reduce your body to a skeletal form as bonus action: resistance to piercing/slashing; lasts 1 min; 1/long rest)'],
+    16:['ASI'],
+    17:['Path Feature'],
+    18:['Death\'s Architect (animate up to 5 skeletons simultaneously; each gains your INT mod to attack and damage)'],
+    19:['ASI'],
+    20:['Osseous Avatar (transform into a towering bone colossus for 1 min 1/day: huge size, 50 temp HP, +4 STR/CON, unarmed strikes deal 2d10 bludgeoning and are magical)']
+  },
+  Warden: {
+    1:['Guardian\'s Bond (choose a terrain type; gain advantage on Perception and Survival in it)','Warden\'s Mark (bonus action: mark a creature; your attacks deal +1d6 damage vs it for 1 min; PB uses/long rest)','Spellcasting (WIS-based; prepare WIS mod + half Warden level spells)'],
+    2:['Fighting Style (choose one: Defense, Dueling, Two-Weapon Fighting, Protection, Interception)','Natural Ward (bonus action: grant yourself or an ally within 30 ft resistance to one damage type until start of your next turn; PB uses/long rest)'],
+    3:['Warden Archetype (subclass)'],
+    4:['ASI'],
+    5:['Extra Attack (attack twice per Attack action)','Guardian\'s Step (move through difficult terrain without penalty)'],
+    6:['Archetype Feature','Warden\'s Resilience (advantage on CON saves vs exhaustion and environmental hazards)'],
+    7:['Sentinel Stance (when you use your reaction for an OA, you can also reduce the target\'s speed to 0 for the rest of the turn)'],
+    8:['ASI','Land\'s Stride (as Ranger)'],
+    9:['Archetype Feature'],
+    10:['Guardian Aura (allies within 10 ft add your WIS modifier to death saving throws and concentration checks)'],
+    11:['Archetype Feature','Relentless Guardian (when Warden\'s Mark target drops to 0 HP, you can move the mark as a free action)'],
+    12:['ASI'],
+    14:['Archetype Feature'],
+    15:['Unbreakable Ward (proficiency in all saving throws)'],
+    16:['ASI'],
+    18:['Archetype Feature','Guardian\'s Aura extends to 30 ft'],
+    19:['ASI'],
+    20:['Eternal Guardian (cannot be surprised; immunity to frightened and charmed; once per turn when you hit a Marked creature, deal +2d8 damage of any type you choose)']
+  },
+  Plaguebearer: {
+    1:['Infectious Touch (melee touch: target makes CON save DC = 8+CHA+PB or becomes Diseased for 1 min — disadvantage on STR and DEX checks; PB uses/long rest)','Plague Resilience (immunity to disease and poison; resistance to poison damage)','Spellcasting (CHA-based)'],
+    2:['Contagion Pool (pool of contagion points = CHA mod + PB; spend 1 point to add 1d6 poison to a hit; spend 2 to Diseased without save; regain on long rest)','Virulent Presence (creatures starting turn within 5 ft of you make CON save or be poisoned until start of their next turn)'],
+    3:['Plague Vector (subclass)'],
+    4:['ASI'],
+    5:['Epidemic Aura (extend Virulent Presence to 10 ft; any creature Diseased by you also has disadvantage on saves vs your spells)','Spreading Sickness (when a Diseased creature dies within 30 ft, each creature within 5 ft of it makes CON save or becomes Diseased)'],
+    6:['Subclass Feature','Pestilent Body (when you take damage, attacker takes 1d6 poison as a reaction)'],
+    7:['Miasma Cloud (action 1/rest: 20-ft radius of toxic vapor centered on you; lasts 1 min concentration; CON save or poisoned on entry)'],
+    8:['ASI'],
+    9:['Subclass Feature'],
+    10:['Plague Immunity Sharing (touch an ally; they gain immunity to disease and poison for 24 hrs)'],
+    11:['Subclass Feature','Virulent Evolution (choose a new disease effect: Rot — reduce max HP; Fever — cause disadvantage on INT checks; Palsy — halve speed)'],
+    12:['ASI'],
+    14:['Subclass Feature'],
+    15:['Outbreak (action 1/long rest: 40-ft radius, all creatures make CON save or become Diseased; spreading sickness triggers immediately)'],
+    16:['ASI'],
+    18:['Subclass Feature','Plague Lord (Diseased creatures within 60 ft treat you as their host — you are aware of their location at all times)'],
+    19:['ASI'],
+    20:['Patient Zero (you become the nexus of all disease in 1 mile; disease immunity for all allies; enemies in range make weekly CON saves or gain a level of exhaustion until they leave the radius or you release them)']
+  },
+  Bloodhunter: {
+    1:['Hunter\'s Bane (ritual: inflict pain on yourself to attune to a creature type — advantage on checks to track it, and it has disadvantage on saves vs your features)','Crimson Rite (bonus action: deal PB damage to yourself to imbue a weapon with a rite — deals bonus 1d4 elemental damage of chosen type; stays active until long rest or you change it; 3 rites known)'],
+    2:['Blood Maledict (CHA mod uses/long rest: impose a curse — Curse of the Eyeless (blind 1 rnd), Curse of the Marked (adv on attacks vs target), Curse of Blistering Touch (on hit: 2d6 fire), or Curse of Corrosion (on hit: -2 AC until cured))'],
+    3:['Blood Hunter Order (subclass)','Subclass Feature'],
+    4:['ASI'],
+    5:['Extra Attack (attack twice per Attack action)','Grim Psychometry (1 min attunement to object: learn last significant event involving it, Wis mod uses/long rest)'],
+    6:['Dark Velocity (Crimson Rite damage increases to 1d6; you add CHA mod to initiative)','Subclass Feature'],
+    7:['Iron Will (advantage on saves vs charm and fright; Blood Maledict effects become harder to remove — require greater restoration)'],
+    8:['ASI'],
+    9:['Subclass Feature'],
+    10:['Sanguine Mastery (reduce Crimson Rite self-damage by CON mod, min 0; Crimson Rite damage increases to 1d8)'],
+    11:['Subclass Feature'],
+    12:['ASI'],
+    13:['Brand of Castigation (a creature cursed by your Blood Maledict also takes 1d6 psychic each time it attacks an ally)'],
+    14:['Subclass Feature','Blood Curse Mastery (use two Blood Maledicts simultaneously on the same target)'],
+    15:['Crimson Rite damage increases to 1d10'],
+    16:['ASI'],
+    18:['Subclass Feature','Rite of the Last Stand (when reduced to 0 HP: expend 2 Maledict uses to drop to 1 HP instead; Crimson Rite charges fully; 1/long rest)'],
+    19:['ASI'],
+    20:['Hunter\'s Bane Mastery (apply Hunter\'s Bane to all creature types simultaneously; Crimson Rite damage increases to 2d6; immune to curse, poison, and disease)']
+  },
+  Psion: {
+    1:['Psionics (INT-based; no verbal/somatic components; spells are purely mental — cannot be silenced or counterspelled unless psionic counterspell is used)','Psionic Talent Die (d6; roll at dawn; use to add to checks, attacks, saves; changes to d8@5, d10@11, d12@17)','Telepathic Speech (communicate telepathically within 30 ft × INT mod)'],
+    2:['Psionic Disciplines (learn 2 disciplines — Telepathy, Telekinesis, Psychoportation, Psychometabolism, or Clairsentience; each grants bonus spells and 1 unique ability)'],
+    3:['Psionic Order (subclass)'],
+    4:['ASI'],
+    5:['Mental Fortress (proficiency in WIS saves; resistance to psychic damage)','Psionic Talent Die increases to d8'],
+    6:['Subclass Feature','Psi-Boosted Ability (spend Psionic Talent Die: add result to any ability check, no action required)'],
+    7:['Telekinetic Adept (lift or move objects weighing up to 500 lbs within 60 ft as bonus action; hurl objects as ranged spell attack for 1d10 + INT bludgeoning)'],
+    8:['ASI'],
+    9:['Subclass Feature'],
+    10:['Mind Over Body (spend Psionic Talent Die as reaction when taking damage: reduce damage by result + INT mod; cannot be used if incapacitated)'],
+    11:['Psionic Talent Die increases to d10','Subclass Feature'],
+    12:['ASI'],
+    13:['Psychic Mastery (choose one psionic spell you know; cast it once per long rest without spending a slot at its lowest level)'],
+    14:['Subclass Feature'],
+    15:['Psi Overload (when you roll maximum on your Psionic Talent Die: regain it immediately; maximum 1 time per turn)'],
+    16:['ASI'],
+    17:['Psionic Talent Die increases to d12'],
+    18:['Subclass Feature','Mind Fortress (immunity to psychic damage; any creature that deals psychic damage to you takes equal damage back)'],
+    19:['ASI'],
+    20:['Psionic Apex (once per long rest: for 1 minute, treat all Psionic Talent Die rolls as maximum; ignore verbal/somatic/material components on all spells; your telepathy range becomes unlimited within the same plane)']
   }
 };
 
@@ -9120,6 +9491,172 @@ const SUBCLASS_FEATURES = {
     'Multiattack':          'Choose: Volley (ranged attack all creatures in 10 ft radius) or Whirlwind Attack (melee attack all creatures within 5 ft).',
     'Superior Hunter\'s Defense': 'Choose: Evasion (DEX save spells: no damage on success, half on fail), Stand Against the Tide (redirect missed melee attack to adjacent creature), or Uncanny Dodge (reaction: halve an attacker\'s damage).',
   },
+
+  // ── OSTEOMANCER SUBCLASS FEATURES ─────────────────────────────────────
+  'Path of the Marrow': {
+    'Bone Spear':           'Starting at 3rd level: action to launch a sharpened bone spike as a ranged spell attack (60 ft). Deals 1d10 + INT piercing. At 11th level: 2d10 + INT. At 17th level: 3d10 + INT.',
+    'Osseous Armor':        'When a creature within 30 ft drops to 0 HP, you can use your reaction to raise bone plating from their remains — gain temp HP = 1d8 + INT modifier. Lasts until your next short or long rest.',
+    'Skeleton Key':         'At 6th level: you can disassemble and reassemble bone structures as a bonus action, granting yourself or an ally within 5 ft advantage on one STR or DEX check (escaping grapples, forcing locks, etc.) once per turn.',
+    'Skeletal Burst':       'At 10th level: action (1/rest) — shatter a bone structure within 60 ft into a 15-ft radius explosion. DEX save (DC = spell save DC) or 4d8 piercing damage; half on success. Targets that fail are also slowed (speed halved) until end of their next turn.',
+    'Bone Storm':           'At 17th level: action (1/long rest) — unleash a 20-ft radius storm of whirling bone shards centered on a point within 60 ft. 6d10 piercing damage (DEX save for half) to all creatures in the area. The area becomes difficult terrain for 1 minute.',
+  },
+
+  'Path of the Grave Knight': {
+    'Raise Servant':        'At 3rd level: bonus action — animate one Small or Medium skeleton from a corpse or bone pile within 10 ft. It acts on your initiative and obeys mental commands. It has HP = 2× your INT mod + Osteomancer level, and uses your spell save DC for its attacks. Only 1 at a time; lasts until destroyed or long rest.',
+    'Death March':          'At 6th level: your undead servants gain bonus movement equal to your walking speed, and their attacks score a critical hit on a 19 or 20.',
+    'Boneguard':            'At 10th level: your Raise Servant can now animate a Large skeleton (CR ≤ 3). Additionally, when an undead servant you control is destroyed within 30 ft, you gain temp HP = PB + INT mod as bone fragments fly back to you.',
+    'Bone Throne':          'At 17th level: action (1/long rest) — summon an aura of 1d4+2 animated bone constructs that orbit you for 1 minute. Each turn as a bonus action, direct one construct to make a melee attack (1d8 + INT bludgeoning) or to intercept an attack targeting you (reduce damage by 1d10 + INT as reaction).',
+  },
+
+  'Path of the Boneshaper': {
+    'Osseous Craft':        'At 3rd level: over 1 minute, fashion a functional tool, weapon (1d6 piercing), or simple structure from bone at no material cost. Items last 24 hours or until destroyed. At 11th level, you can create magical bone items with +1 to attack/AC.',
+    'Cage of Ribs':         'At 6th level: action (PB uses/long rest) — cause a ribcage to erupt from the ground at a point within 30 ft. One creature in that space makes a STR save (DC = spell save DC) or is restrained inside the cage (AC 13, 20 HP). The creature can break free with a STR check (same DC) on its turn.',
+    'Bone Bridge':          'At 10th level: action — extend a bone bridge, wall, or ramp up to 30 ft long and 5 ft wide. Lasts 1 hour. Creatures on top of it have half cover. You can shape the terrain during combat as a bonus action (raise, lower, tilt).',
+    'Living Architecture': 'At 17th level: action (1/long rest) — reshape a 60-ft radius area of terrain using bone and stone. Choose up to 5 effects: create walls (AC 15, 50 HP each), pit traps (DEX save or fall 20 ft), elevated platforms, difficult terrain zones, or enclosed cages. Effects last 10 minutes.',
+  },
+
+  'Path of the Reliquary': {
+    'Relic Communion':      'At 3rd level: attune to a bone fragment from a deceased creature over 1 minute. You gain proficiency in one of their skill or tool proficiencies for 24 hours. You can hold a number of attuned relics = INT mod (min 1). Relics can be found in tombs, carried by monsters, or harvested from fallen foes.',
+    'Sacred Marrow':        'At 6th level: when you cast a spell of 1st level or higher, you can expend one relic charge instead of a spell slot (1 charge per slot level, max 3rd level spells). Each relic holds 3 charges; charges refill on long rest.',
+    'Ancestral Chorus':     'At 10th level: as a bonus action, call on your relics\' memories — gain advantage on one INT, WIS, or CHA check per relic currently attuned. Additionally, once per turn when you hit with a spell attack, add 1d6 per relic attuned to the damage roll.',
+    'Soul Archive':         'At 17th level: upon defeating a creature of CR 5 or higher, you can preserve its essence in a relic (reaction). While this relic is attuned: once per long rest, cast one spell the creature could cast (using its save DC or your spell save DC, whichever is higher) without expending a slot.',
+  },
+
+  // ── WARDEN SUBCLASS FEATURES ──────────────────────────────────────────
+  'Warden of the Wild': {
+    'Nature\'s Sentinel':   'At 3rd level: advantage on Perception and Survival checks in natural terrain (forests, plains, mountains, swamps, etc.). You can move at full speed while tracking without giving away your position.',
+    'Beast Bond':           'At 3rd level: form a bond with one beast of CR ≤ 1/4. It acts on your initiative, gains HP = your Warden level × 2, and uses your PB for attacks. If it dies, you can rebond during a long rest. At 7th level, the CR limit increases to 1.',
+    'Verdant Surge':        'At 7th level: reaction when you take damage — thorny vines lash out at your attacker if they are within 10 ft. The attacker takes 2d6 piercing and must make a STR save (DC = 8 + WIS + PB) or be restrained until end of their next turn. 1/rest.',
+    'Wild Call':            'At 11th level: action (1/long rest) — call 1d4 beasts of CR ≤ 1 from the surrounding environment. They fight for you for 1 hour, acting on their own initiative, then disperse.',
+    'One with Nature':      'At 15th level: you cannot be charmed or frightened by beasts or plant creatures. While in natural terrain, you have truesight 30 ft and cannot be tracked by nonmagical means.',
+  },
+
+  'Warden of the Depths': {
+    'Darktide Sight':       'At 3rd level: darkvision 120 ft. While submerged in water or underground, you also gain truesight 30 ft and can breathe in any liquid environment.',
+    'Crushing Current':     'At 3rd level: action (PB uses/long rest) — lash out with a surge of pressurized water in a 30-ft line. Creatures in the line make a STR save (DC = 8 + WIS + PB) or take 2d8 bludgeoning and are pushed 15 ft. Success: half damage, no push.',
+    'Abyssal Ward':         'At 7th level: resistance to cold damage and immunity to the effects of pressure (no damage from deep water environments). Additionally, your weapon attacks deal +1d6 cold damage while you are underwater or in dim light.',
+    'Tidal Pull':           'At 11th level: when a creature enters or starts its turn within 30 ft of you while you are near a body of water or underground, you can use your reaction to attempt to pull it 10 ft toward you (STR save or be pulled; no action). Once per turn.',
+    'Leviathan\'s Form':    'At 15th level: action (1/long rest) — take on an aspect of the deep for 1 minute. You grow fins and scales (swim speed 60 ft), your unarmed strikes deal 2d6 cold + 1d6 bludgeoning, and Large or smaller creatures within 10 ft have disadvantage on attack rolls against targets other than you.',
+  },
+
+  'Warden of the Citadel': {
+    'Shield of Hearth':     'At 3rd level: reaction when an ally within 10 ft is hit by an attack — grant them +2 AC against that attack (after seeing the roll but before the outcome). PB uses/long rest.',
+    'Stoneguard Stance':    'At 3rd level: while you are not moving on your turn, you gain immunity to forced movement (pushes, pulls, knockback) and +2 AC until start of your next turn.',
+    'Rally the Defenders':  'At 7th level: bonus action (PB uses/long rest) — shout a battle cry that removes the frightened condition from all allies within 30 ft. Each affected ally also gains temp HP = WIS modifier.',
+    'Fortified Position':   'At 11th level: you can spend 1 minute to designate a 30-ft radius as a warded area. While inside, allied creatures have advantage on DEX saves and +1 to AC. The ward lasts 8 hours or until you create a new one.',
+    'Undying Bulwark':      'At 15th level: when reduced to 0 HP, you can use your reaction to drop to 1 HP and emit a burst of protective energy — all allies within 30 ft gain temp HP = your Warden level + WIS mod. 1/long rest.',
+  },
+
+  'Warden of the Storm': {
+    'Storm Step':           'At 3rd level: bonus action (PB uses/long rest) — teleport up to 30 ft in a flash of lightning. A crack of thunder follows: each creature within 5 ft of your origin or destination makes a CON save (DC 8 + WIS + PB) or is deafened until end of their next turn.',
+    'Thunder\'s Reach':     'At 3rd level: your weapon attacks deal +1d6 lightning damage. At 11th level this increases to +2d6, and the target must make a CON save or be stunned until end of their next turn on a critical hit.',
+    'Eye of the Tempest':   'At 7th level: immunity to the effects of natural weather. Advantage on CON saves vs exhaustion. While in stormy conditions, your critical hit range expands to 19–20.',
+    'Stormcaller':          'At 11th level: action (1/long rest) — summon a localized storm in a 60-ft radius for 1 minute. Each round on your turn: choose one effect — Lightning Strike (one creature DEX save or 4d10 lightning), Wind Blast (all creatures in 20-ft line STR save or pushed 20 ft), or Hailstorm (20-ft radius, 2d6 cold + difficult terrain).',
+    'Tempest Avatar':       'At 15th level: action (1/long rest) — transform into a storm avatar for 1 minute. Fly speed 60 ft (hover), resistance to lightning and thunder, immunity to being restrained. Once per turn when you deal lightning or thunder damage, one additional creature within 10 ft of the target takes half that damage automatically.',
+  },
+
+  // ── PLAGUEBEARER SUBCLASS FEATURES ────────────────────────────────────
+  'Pestilent Sovereign': {
+    'Plague Crown':         'At 3rd level: action (1/rest) — create a 20-ft radius contagion zone centered on a point within 60 ft for 1 minute. Creatures starting their turn there make a CON save (DC = spell save DC) or contract Plague Crown Sickness: disadvantage on STR and CON checks, -10 ft speed for 1 hour (remove with lesser restoration).',
+    'Infectious Command':   'At 6th level: a creature that fails two CON saves against your Plague Crown Sickness becomes a temporary thrall. As a bonus action, you can command it to move up to its speed or take one action. Lasts until it recovers from the disease.',
+    'Epidemic Surge':       'At 10th level: action (1/long rest) — forcibly spread any disease currently affecting one creature to all hostile creatures within 30 ft of it. Each must make a CON save or contract the same disease immediately.',
+    'Plague Lord\'s Dominion': 'At 14th level: you are immune to all diseases, including magical ones. Any creature that attempts to magically cure one of your diseases must make a CON save (DC = spell save DC) or the cure fails.',
+  },
+
+  'Rot Disciple': {
+    'Necrotic Flesh':       'At 3rd level: natural armor 12 + CON modifier when not wearing armor. You are immune to disease and the poisoned condition. Undead creatures are indifferent to you unless you attack them.',
+    'Wasting Touch':        'At 3rd level: once per turn when you hit with a melee attack, deal an additional 2d8 necrotic damage and reduce the target\'s HP maximum by the same amount until they finish a long rest.',
+    'Corpse Bloom':         'At 6th level: whenever a creature dies within 30 ft of you, you gain temp HP = CON modifier + half your PB. If you already have temp HP, take the higher value.',
+    'Flesh Rot Aura':       'At 10th level: creatures of your choice that start their turn within 10 ft of you must make a CON save or have their movement speed reduced by 10 ft until end of their next turn (stacks with other effects).',
+    'Living Carrion':       'At 14th level: you can reattach lost limbs and recover from grievous wounds. At the start of each of your turns, if you have at least 1 HP, you regain HP = CON modifier. Additionally, you cannot be reduced below 1 HP more than once per round.',
+  },
+
+  'Fever Dancer': {
+    'Fevered Grace':        'At 3rd level: while below half your HP maximum, your walking speed increases by 10 ft and you have advantage on DEX saving throws. Additionally, attacks of opportunity against you are made with disadvantage.',
+    'Delirium Strike':      'At 3rd level: once per turn when you hit a creature, the target must make a CON save (DC = spell save DC) or have disadvantage on its next attack roll before end of its next turn.',
+    'Euphoric Plague':      'At 6th level: action (1/rest) — force one creature within 30 ft to make a WIS save. On failure: the target is simultaneously charmed and poisoned for 1 minute. While in this state, it attacks a random target on its turn (even allies) and cannot take reactions.',
+    'Ecstatic Surge':       'At 10th level: when you are hit by an attack that would reduce you below half HP, you can use your reaction to move up to your speed without provoking opportunity attacks and make one weapon attack.',
+    'Dance of Death':       'At 14th level: action (1/long rest) — enter an ecstatic fever dance for 1 minute. While dancing: immune to being restrained or paralyzed; each time a creature misses you with a melee attack, you can immediately move 5 ft without provoking OA; at the end of each of your turns, deal 2d6 psychic to each creature within 5 ft (WIS save for half).',
+  },
+
+  'Miasma Broker': {
+    'Toxic Haze':           'At 3rd level: action (PB uses/long rest) — release a 20-ft radius cloud of poison gas centered on yourself. The cloud persists for 1 minute (concentration). Creatures that enter or start their turn there make a CON save (DC = spell save DC) or be poisoned until end of their next turn.',
+    'Barter of Blight':     'At 6th level: bonus action — offer a visible creature within 30 ft a devil\'s bargain. If it accepts: it takes 2d6 poison damage willingly and gains advantage on its next attack roll or ability check. If it refuses: it makes a WIS save or be frightened of you for 1 minute.',
+    'Choking Mist':         'At 6th level: your Toxic Haze also halves the movement speed of creatures that fail their save. At 14th level, creatures that critically fail (roll 5 or lower) are also incapacitated until the start of their next turn.',
+    'Miasma Expansion':     'At 10th level: your Toxic Haze radius increases to 30 ft, and creatures poisoned by it also have disadvantage on CON saves until the haze dissipates.',
+    'Venom Pact':           'At 14th level: action (1/long rest) — enter into a symbiotic pact with your own miasma for 1 minute. You are immune to poison damage. Any creature that hits you with a melee attack takes 2d10 poison damage. Your weapon attacks deal an additional 2d6 poison damage.',
+  },
+
+  // ── BLOOD HUNTER SUBCLASS FEATURES ────────────────────────────────────
+  'Order of the Ghostslayer': {
+    'Rite of the Dawn':     'At 3rd level: your Crimson Rite imbues weapons with radiant energy (in addition to elemental options). Rite of the Dawn also suppresses an undead creature\'s regeneration for 1 minute on a hit.',
+    'Ethereal Step':        'At 7th level: bonus action (PB uses/long rest) — step into the Border Ethereal until end of your next turn. While there, you are invisible and immune to nonmagical damage. You can still attack creatures on the Material Plane (they have disadvantage against you).',
+    'Ashen Rite':           'At 11th level: when you slay an undead creature, you can use your reaction to instantly destroy it (no corpse remains), preventing any resurrection or reanimation.',
+    'Vengeful Spirit':      'At 15th level: when you are reduced to 0 HP, your spirit separates from your body for up to 1 minute (concentration). Your spirit can fly 30 ft, is invisible, and on each of your turns can make one attack (using your stats). Your body is unconscious and stable. If your spirit is destroyed, you begin making death saves.',
+  },
+
+  'Order of the Profane Soul': {
+    'Pact Magic':           'At 3rd level: gain two warlock cantrips and two 1st-level spell slots (regain on short rest). Choose a patron archetype (Archfey, Fiend, or Great Old One) — gain that patron\'s expanded spell list as Blood Hunter spells.',
+    'Mystical Nitro':       'At 7th level: when you deal damage with a spell, add your Hemocraft Die to the damage roll once per turn.',
+    'Runic Ward':           'At 11th level: when you take damage, you can expend a spell slot as a reaction — reduce the damage by 2d10 per spell slot level expended.',
+    'Soul Rend':            'At 15th level: action (1/long rest) — tear the soul of a creature you can see within 60 ft. It makes a CHA save (DC = spell save DC) or takes 8d10 psychic damage and is incapacitated until end of its next turn. Half damage on success.',
+  },
+
+  'Order of the Mutant': {
+    'Mutagencraft':         'At 3rd level: craft mutagens during a short or long rest. Each grants a bonus and a flaw (active simultaneously). Potency (+1d4 STR checks/saves; flaw: disadv CON saves), Swiftness (+10 ft speed, +1d4 DEX checks; flaw: disadv WIS saves), Toughness (+1d4 CON saves; flaw: vulnerable to psychic), Sagacity (+1d4 INT checks; flaw: disadv STR checks), Perception (+1d4 Perception; flaw: light sensitivity), Unbreakable (resistance to one damage type; flaw: vulnerability to a second type).',
+    'Strange Metabolism':   'At 7th level: you can consume a mutagen as a bonus action (instead of an action). You can also have two mutagens active simultaneously.',
+    'Brand of Axiom':       'At 11th level: your weapon attacks while under a mutagen ignore resistance (not immunity) to the damage type of your active Crimson Rite.',
+    'Adaptive Mutation':    'At 15th level: once per long rest when you take damage of a type you are not immune to, you can use your reaction to gain resistance to that damage type for 1 hour.',
+  },
+
+  'Order of the Lycan': {
+    'Hybrid Transformation':'At 3rd level: bonus action — partially transform into a bestial hybrid for up to 1 hour. While transformed: +1d6 to STR-based attacks, advantage on Perception (smell and hearing), walk speed +10 ft, and your unarmed strikes deal 1d6 + STR slashing and count as magical.',
+    'Feral Might':          'At 7th level: while transformed, your unarmed strikes deal 1d8 + STR, you have advantage on STR checks and saves, and you can make an additional unarmed attack as a bonus action on your turn.',
+    'Bloodlust':            'At 7th level: when you drop to 0 HP while transformed, make a DC 15 WIS save. On failure: drop to 1 HP instead and immediately attack the nearest creature (friend or foe) using your full action.',
+    'Resilient Hide':       'At 11th level: while transformed, you have resistance to bludgeoning, piercing, and slashing damage from nonmagical, non-silvered weapons.',
+    'Ferocious Strikes':    'At 15th level: while transformed, critical hits with unarmed strikes also cause the target to make a CON save (DC 8 + STR + PB) or be stunned until end of your next turn.',
+  },
+
+  // ── PSION SUBCLASS FEATURES ───────────────────────────────────────────
+  'Order of the Awakened': {
+    'Psionic Investigation': 'At 3rd level: advantage on Insight and Investigation checks. When you succeed on an Insight check against a creature, you also learn one surface thought or one true fact about them (DM\'s choice).',
+    'Telepathic Reach':     'At 3rd level: your Telepathic Speech range increases to 60 ft × INT mod. You can simultaneously maintain telepathic contact with a number of creatures = INT mod.',
+    'Unopened Mind':        'At 6th level: immune to Detect Thoughts, mind-reading magic, and any effect that would read your surface thoughts. You are aware when such an attempt is made.',
+    'Psychic Infiltration': 'At 10th level: action (1/long rest) — project your mind into one humanoid you can see within 30 ft. Make an INT (Investigation) check contested by their WIS (Insight). On success, you gain access to one memory, lie, or secret of your choice. On failure, they know an attempt was made.',
+    'Mind Web':             'At 14th level: as an action, create a telepathic web linking you and up to INT mod willing creatures within 60 ft for 1 hour. All linked creatures can communicate telepathically. Once per turn, any linked creature can grant advantage on an attack roll or saving throw to another linked creature within 60 ft.',
+  },
+
+  'Order of the Immortal': {
+    'Psychic Surge':        'At 3rd level: reaction when you take damage — expend one Psionic Talent Die to reduce the damage by the result + CON modifier.',
+    'Living Aura':          'At 3rd level: creatures within 10 ft of you have disadvantage on saves against your psionic disciplines. At 14th level, this increases to 30 ft.',
+    'Surge of Health':      'At 6th level: once per short rest as a reaction when you drop below half HP, regain HP = 2 × CON modifier.',
+    'Psionic Physiology':   'At 10th level: you no longer need to eat, drink, or sleep. Immune to disease and poison. Your HP maximum increases by INT modifier.',
+    'Immutable Form':       'At 14th level: immune to being polymorphed, petrified, or having your form altered against your will. When you are reduced to 0 HP, you can expend 3 Psionic Talent Dice as a reaction to drop to 1 HP instead. 1/long rest.',
+  },
+
+  'Order of the Nomad': {
+    'Psionic Wayfarer':     'At 3rd level: bonus action — expend one Psionic Talent Die to teleport up to 10 ft × the die result to an unoccupied space you can see.',
+    'Step Through':         'At 6th level: once per turn as part of your movement, you can pass through one solid object or creature up to 5 ft thick. If you end your turn inside a solid object, you take 1d10 force damage and are shunted to the nearest open space.',
+    'Blink Cascade':        'At 10th level: when you use Psionic Wayfarer, you can make one weapon attack immediately after teleporting (as part of the same bonus action). At 14th level, you can teleport up to 3 times per turn (once each before, after, and in the middle of your Attack action).',
+    'Planar Anchor':        'At 10th level: action — prevent one creature you can see within 60 ft from teleporting or using planar travel for 1 minute (WIS save to resist; repeat save each turn). PB uses/long rest.',
+    'Dimensional Mastery':  'At 14th level: your teleportation is unlimited in distance as long as you can see (or have visited) the destination on the same plane. You can bring one willing creature of your size or smaller with you when you teleport.',
+  },
+
+  'Order of the Soul Knife': {
+    'Psychic Blades':       'At 3rd level: create two finesse, thrown (60 ft range) psychic blades as part of your attack action — they appear in your hands and vanish after striking. Each deals 1d6 + DEX psychic damage. You can make a bonus action attack with the second blade (adding DEX mod to damage).',
+    'Homing Strikes':       'At 6th level: when you miss with a psychic blade, expend one Psionic Talent Die and add the result to the attack roll (potentially turning a miss into a hit). Can be declared after seeing the miss.',
+    'Rend Mind':            'At 10th level: when you deal Sneak Attack damage with a psychic blade, the target must make a WIS save (DC = 8 + INT + PB) or be stunned until start of your next turn. 1/rest.',
+    'Psychic Veil':         'At 10th level: action (1/long rest or expend 1 Psionic Talent Die) — become invisible for 1 hour or until you attack, deal damage, or force a saving throw.',
+    'Knife Storm':          'At 14th level: action (1/long rest) — create a storm of psychic blades. Each creature within 30 ft you choose makes a DEX save or takes 8d6 psychic damage (half on success). Creatures that fail are also blinded until end of their next turn.',
+  },
+
+  'Order of the Wu Jen': {
+    'Elemental Attunement':  'At 3rd level: choose an element — acid, cold, fire, lightning, or thunder. Your psionic disciplines deal that damage type instead of psychic whenever you choose. You gain resistance to your chosen element.',
+    'Elemental Burst':       'At 3rd level: when you cast a psionic spell that deals damage, you can change the damage to your chosen element. Once per turn, add your Psionic Talent Die result to the damage of one elemental spell.',
+    'Wild Talent Surge':     'At 6th level: when you roll the maximum value on a Psionic Talent Die, gain an extra use of the same die immediately (can trigger once per original use).',
+    'Elemental Form':        'At 10th level: action (1/long rest) — assume an elemental aspect for 1 minute. While active: immunity to your chosen element, a 10-ft damaging aura (creatures that start within 5 ft take 2d6 elemental damage, no save), and your weapon attacks deal +2d6 of your element.',
+    'Elemental Mastery':     'At 14th level: once per turn when you deal your elemental damage type, ignore resistance (not immunity). Creatures with immunity to your damage type instead take half damage from your spells and abilities.',
+  },
 };
 
 
@@ -9730,6 +10267,12 @@ const CLASS_FLAVOR = {
   Sorcerer:   'Magic in your blood. Fewer spells than a Wizard but Metamagic lets you bend them — quicken, twin, extend, empower. Charisma-based with natural spellcasting. Best for players who want pure spellcasting power.',
   Warlock:    'Pact magic. A few powerful slots that recharge on short rests, eldritch blast as a reliable cantrip, and invocations that customize your entire kit. Best for players who want a unique magical patron relationship.',
   Wizard:     'The master of magic. Largest spell list in the game, a spellbook you expand over time, and Arcane Recovery to get slots back. Fragile but devastating. Best for players who love strategy and preparation.',
+  // ── HOMEBREW ──────────────────────────────────────────────────────────
+  Osteomancer: '(Homebrew) Master of bone and death. You reshape, hurl, and animate bone matter as a weapon. Half-frontliner, half-necromancer — you can raise skeletal servants, cage enemies in ribs, and even transform your own body. Best for players who want a dark, creative spellcaster with teeth.',
+  Warden:      '(Homebrew) The guardian of place and people. Heavy armor, spells, and a powerful Mark that lets you punish anyone who threatens your allies. Each subclass bonds you to a different environment — wild, sea, fortress, or storm. Best for players who want to be the protector the party never knew it needed.',
+  Plaguebearer:'(Homebrew) Walking biological weapon. You spread disease, poison, and rot as easily as breathing, and your own body is immune to all of it. Subclasses let you infect whole crowds, wield decay as armor, use sickness as fuel for speed, or trade in toxic bargains. Best for players who love attrition and control.',
+  Bloodhunter: '(Critical Role — Matt Mercer) Monster hunter who harms themselves to gain power. Imbue weapons with elemental rites, curse enemies with Blood Maledicts, and specialize into ghost-slaying, warlock pacts, body mutation, or lycanthropy. Best for players who want a gritty, high-risk martial class.',
+  Psion:       '(Homebrew) Pure mind over matter. No words, no gestures — your spells are purely mental and cannot be silenced or counterspelled by normal means. A Psionic Talent Die powers all your abilities. Subclasses cover telepathy, teleportation, psychic blades, elemental psionics, and bodily perfection. Best for players who want to feel genuinely alien and powerful.',
 };
 
 const RACE_FLAVOR = {
@@ -9760,6 +10303,15 @@ const RACE_FLAVOR = {
   'Triton':              '+1 STR/CON/CHA, swim 30ft, breathe water, innate spells. Sea warrior — great Paladin, Cleric, or Fighter in aquatic campaigns.',
   'Changeling':          '+2 CHA +1 any, at-will shapeshifting, two skills. The ultimate infiltrator. Best Bard, Rogue, or Warlock.',
   'Aarakocra':           '+2 DEX +1 WIS, fly speed 50ft — the most powerful racial trait in the game. Excellent Ranger or Monk.',
+  // ── HOMEBREW ──────────────────────────────────────────────────────────
+  'Boneborn':            '(Homebrew) A humanoid built from living bone — immune to disease and poison, tough natural armor, and a self-repair ability. The Osseous Sense lets you feel undead nearby without sight. Best for INT or CON casters who want a durable, eerie presence. Pairs well with Osteomancer, Wizard, or Cleric.',
+  'Thornkin':            '(Homebrew) Plant-humanoid wrapped in bark and thorns. You retaliate automatically when hit in melee, resist forced movement, and commune naturally with plants. WIS+CON bonuses suit Druid, Ranger, or Warden perfectly. Low-key and tactically defensive.',
+  'Duskborn':            '(Homebrew) Touched by twilight — faster than most, with deep darkvision and the ability to melt into shadows as a bonus action. You need no sleep; only a 4-hour trance. DEX+CHA makes you ideal for Rogue, Warlock, or Bard. The classiest of the dark races.',
+  'Cindergraft':         '(Homebrew) A fire-fused construct race built for endurance. Fire immune, no need to eat or drink, and your Ember Forge ability superheats weapons on demand. Balanced +1/+1/+1 stats make you flexible across any martial or INT class. Pairs well with Fighter, Osteomancer, or Artificer.',
+  'Voidtouched':         '(Homebrew) Warped by planar energy, you can tear a rift in space to teleport once per rest and passively know which plane you\'re on. The Anomalous Form occasionally triggers a wild surge for free temp HP. INT+WIS suits Wizard, Psion, or Warlock. Great for players who love an unpredictable edge.',
+  'Sporekin':            '(Homebrew) Fungal humanoid with a blinding spore burst, passive detection of undead and plant creatures, and solid poison resistance. CON+WIS supports Druid, Warden, or Plaguebearer. Slow and sturdy with excellent battlefield awareness.',
+  'Glassling':           '(Homebrew) Crystalline construct that reflects light to deflect attacks, absorbs radiant damage as temp HP, and moves faster than it looks. DEX+INT lends itself to Rogue, Psion, or Artificer. Elegant and fragile-looking — but with sharper defensive tricks than most.',
+  'Ivyborn':             '(Homebrew) A vine-covered nature spirit with a climb speed, the ability to restrain enemies by touch, and passive sunlight regeneration. WIS+DEX is perfect for Druid, Warden, or Ranger. The most supportive of the homebrew races — always growing, always reaching.',
 };
 
 const BG_FLAVOR = {

@@ -5960,393 +5960,512 @@ function viewCharacter(id) {
     const rd = RACE_DATA[c.race] || {};
     return rd.bonuses || {};
   })();
-  // Final ability scores = base + racial bonus
   const finalScore = a => (parseInt(scores[a]) || 10) + (racial[a] || 0);
   const lvl  = c.level || 1;
   const p    = pb(lvl);
   const dex  = mod(finalScore('DEX'));
   const wis  = mod(finalScore('WIS'));
   const int_ = mod(finalScore('INT'));
+  const con  = mod(finalScore('CON'));
+  const str  = mod(finalScore('STR'));
+  const cha  = mod(finalScore('CHA'));
 
-  // Passive scores
-  const passivePerc  = 10 + wis  + (c.skillProfs?.includes('Perception')   ? p : 0) + (c.skillExp?.includes('Perception')   ? p : 0);
-  const passiveInv   = 10 + int_ + (c.skillProfs?.includes('Investigation') ? p : 0) + (c.skillExp?.includes('Investigation') ? p : 0);
-  const passiveIns   = 10 + wis  + (c.skillProfs?.includes('Insight')       ? p : 0) + (c.skillExp?.includes('Insight')       ? p : 0);
+  const passivePerc = 10 + wis  + (c.skillProfs?.includes('Perception')   ? p : 0) + (c.skillExp?.includes('Perception')   ? p : 0);
+  const passiveInv  = 10 + int_ + (c.skillProfs?.includes('Investigation') ? p : 0) + (c.skillExp?.includes('Investigation') ? p : 0);
+  const passiveIns  = 10 + wis  + (c.skillProfs?.includes('Insight')       ? p : 0) + (c.skillExp?.includes('Insight')       ? p : 0);
 
-  // Spell stats
-  const spellAbScore = finalScore(c.spellAbility || 'INT');
-  const spellMod     = mod(spellAbScore);
-  const spellDC      = 8 + p + spellMod;
-  const spellAtk     = p + spellMod;
+  const spellAbMap = { INT: int_, WIS: wis, CHA: cha };
+  const spellMod   = c.spellAbility ? (spellAbMap[c.spellAbility] || 0) : 0;
+  const spellDC    = 8 + p + spellMod;
+  const spellAtk   = p + spellMod;
+  const spellAbFull = c.spellAbility ? ({ INT:'Intelligence', WIS:'Wisdom', CHA:'Charisma' }[c.spellAbility] || c.spellAbility) : null;
 
-  // Skill rows
-  const skillRows = SKILLS_DATA.map(sk => {
-    const prof  = c.skillProfs?.includes(sk.name);
-    const exp   = c.skillExp?.includes(sk.name);
-    const bonus = mod(finalScore(sk.ab)) + (exp ? p*2 : prof ? p : 0);
-    return `<tr>
-      <td style="width:16px">${exp ? '★' : prof ? '●' : '○'}</td>
-      <td>${sk.name} <span style="color:#999;font-size:.78rem">(${sk.ab})</span></td>
-      <td style="text-align:right;font-weight:600">${fmod(bonus)}</td>
-    </tr>`;
-  }).join('');
+  const hpPct   = c.maxhp ? Math.min(100, Math.round((c.curhp / c.maxhp) * 100)) : 0;
+  const hpColor = hpPct > 50 ? '#2ecc71' : hpPct > 25 ? '#f39c12' : '#e74c3c';
 
-  // Save rows
-  const saveRows = ABILITIES.map(a => {
-    const prof  = c.saveProfs?.includes(a);
-    const bonus = mod(finalScore(a)) + (prof ? p : 0);
-    return `<tr>
-      <td style="width:16px">${prof ? '●' : '○'}</td>
-      <td>${ABILITY_NAMES[a]}</td>
-      <td style="text-align:right;font-weight:600">${fmod(bonus)}</td>
-    </tr>`;
-  }).join('');
+  const totalGP = ((c.cp||0)/100) + ((c.sp||0)/10) + ((c.ep||0)/2) + (c.gp||0) + ((c.pp||0)*10);
 
-  // Armor proficiencies
-  const armorProfs = [
-    c.profLight  ? 'Light' : null,
-    c.profMedium ? 'Medium' : null,
-    c.profHeavy  ? 'Heavy' : null,
-    c.profShield ? 'Shields' : null,
-  ].filter(Boolean).join(', ') || 'None';
-
-  // Spell slots display
-  const slotDisplay = (() => {
+  // ── Build spell slots display ──
+  const slotHtml = (() => {
     if (!c.spellAbility || !c.spells?.length) return '';
     const cd = CLASS_DATA[c.cls];
     if (!cd || !cd.spellAb) return '';
     const slots = c.spellSlots || {};
-    const rows = Object.entries(slots).filter(([,v]) => v.total > 0).map(([lvl, v]) =>
-      `<td style="text-align:center">${v.total - (v.used||0)}/${v.total}</td>`
-    ).join('');
-    const hdrs = Object.entries(slots).filter(([,v]) => v.total > 0).map(([lvl]) =>
-      `<td style="text-align:center;font-size:.72rem;color:#7a4800">${lvl==='1'?'1st':lvl==='2'?'2nd':lvl==='3'?'3rd':lvl+'th'}</td>`
-    ).join('');
-    return hdrs ? `<table style="width:100%"><tr>${hdrs}</tr><tr>${rows}</tr></table>` : '';
+    const entries = Object.entries(slots).filter(([,v]) => v.total > 0);
+    if (!entries.length) return '';
+    const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th'];
+    if (cd.isPact) {
+      const numSlots = WARLOCK_SLOTS[Math.min(lvl,20)] || [0];
+      const slotLvl  = WARLOCK_SLOT_LEVEL[Math.min(lvl,20)] || 1;
+      const s = slots[1] || { total: numSlots[0], used: 0 };
+      return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+        <div style="background:#fff;border:1px solid #c9a84c88;padding:8px 12px;border-radius:2px;text-align:center;min-width:90px">
+          <div style="font-size:.68rem;color:#6b3800;font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:.05em">Pact Slots (L${slotLvl})</div>
+          <div style="font-size:1.3rem;font-family:'Cinzel',serif;font-weight:700;color:#1a0f00">${s.total-(s.used||0)}/${s.total}</div>
+          <div style="font-size:.68rem;color:#888">Short rest</div>
+        </div>
+      </div>`;
+    }
+    return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+      ${entries.map(([lvlNum, s]) => {
+        const remaining = s.total - (s.used||0);
+        const pips = Array(s.total).fill(0).map((_,i) =>
+          `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;${i < remaining ? 'background:#c9a84c' : 'background:#ddd;border:1px solid #c9a84c'};margin:1px"></span>`
+        ).join('');
+        return `<div style="background:#fff;border:1px solid #c9a84c88;padding:8px 12px;border-radius:2px;text-align:center;min-width:70px">
+          <div style="font-size:.65rem;color:#6b3800;font-family:'Cinzel',serif;letter-spacing:.04em">${ordinals[parseInt(lvlNum)-1]||lvlNum}</div>
+          <div style="font-size:1.2rem;font-family:'Cinzel',serif;font-weight:700;color:#1a0f00">${remaining}/${s.total}</div>
+          <div>${pips}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
   })();
 
-  // Features list
-  const allFeatures = [
-    ...(c.customFeatures || []).map(f => ({ name: f.name, desc: f.desc })),
-  ];
+  // ── Spells grouped by level ──
+  const spellsHtml = (() => {
+    if (!c.spells?.length) return '';
+    const byLevel = {};
+    c.spells.forEach(s => {
+      if (!byLevel[s.level]) byLevel[s.level] = [];
+      byLevel[s.level].push(s);
+    });
+    const ordinals = ['Cantrip','1st Level','2nd Level','3rd Level','4th Level','5th Level','6th Level','7th Level','8th Level','9th Level'];
+    return Object.keys(byLevel).sort((a,b) => a-b).map(lvNum => {
+      const spellRows = byLevel[lvNum].map(s => `
+        <tr>
+          <td style="padding:6px 8px;border-bottom:1px solid #f0e6c8;vertical-align:top">
+            <div style="font-weight:600;color:#1a0f00;font-size:.88rem">${s.name}${s.ritual==='yes'?' <span style="font-size:.7rem;color:#888">(R)</span>':''}</div>
+            <div style="font-size:.72rem;color:#888;margin-top:1px">${s.school||''}${s.concentration==='yes'?' · Concentration':''}</div>
+          </td>
+          <td style="padding:6px 8px;border-bottom:1px solid #f0e6c8;vertical-align:top;font-size:.82rem;color:#333;white-space:nowrap">${s.castTime||'—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #f0e6c8;vertical-align:top;font-size:.82rem;color:#333;white-space:nowrap">${s.range||'—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #f0e6c8;vertical-align:top;font-size:.82rem;color:#333">${s.duration||'—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #f0e6c8;vertical-align:top;font-size:.82rem;color:#333">${s.damage||'—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #f0e6c8;vertical-align:top;font-size:.82rem;color:#c04040">${s.save||''}</td>
+        </tr>
+        ${s.desc ? `<tr><td colspan="6" style="padding:4px 8px 10px 20px;border-bottom:1px solid #f0e6c8;background:#fdfaf3"><div style="font-size:.8rem;color:#555;line-height:1.5;font-style:italic">${s.desc}</div></td></tr>` : ''}
+      `).join('');
+      return `
+        <div style="margin-bottom:14px">
+          <div style="font-family:'Cinzel',serif;font-size:.75rem;color:#6b3800;text-transform:uppercase;letter-spacing:.08em;padding:6px 0 4px;border-bottom:2px solid #c9a84c44;margin-bottom:0">${ordinals[parseInt(lvNum)]||('Level '+lvNum)}</div>
+          <table style="width:100%;border-collapse:collapse">
+            <tr style="font-size:.65rem;color:#6b3800;font-family:'Cinzel',serif;background:#fdf5e0">
+              <th style="padding:4px 8px;text-align:left;font-weight:600">Spell</th>
+              <th style="padding:4px 8px;text-align:left;font-weight:600">Cast Time</th>
+              <th style="padding:4px 8px;text-align:left;font-weight:600">Range</th>
+              <th style="padding:4px 8px;text-align:left;font-weight:600">Duration</th>
+              <th style="padding:4px 8px;text-align:left;font-weight:600">Damage/Effect</th>
+              <th style="padding:4px 8px;text-align:left;font-weight:600">Save</th>
+            </tr>
+            ${spellRows}
+          </table>
+        </div>`;
+    }).join('');
+  })();
+
+  // ── Skill rows ──
+  const skillRows = SKILLS_DATA.map(sk => {
+    const prof  = c.skillProfs?.includes(sk.name);
+    const exp   = c.skillExp?.includes(sk.name);
+    const bonus = mod(finalScore(sk.ab)) + (exp ? p*2 : prof ? p : 0);
+    const dot   = exp ? '★' : prof ? '●' : '○';
+    return `<tr>
+      <td style="width:18px;color:${prof||exp?'#c9a84c':'#bbb'};font-size:.8rem">${dot}</td>
+      <td style="font-size:.82rem;padding:2px 4px">${sk.name} <span style="color:#999;font-size:.72rem">(${sk.ab})</span></td>
+      <td style="text-align:right;font-weight:700;font-size:.85rem;font-family:'Cinzel',serif;color:${prof||exp?'#6b3800':'#555'}">${fmod(bonus)}</td>
+    </tr>`;
+  }).join('');
+
+  // ── Save rows ──
+  const saveRows = ABILITIES.map(a => {
+    const prof  = c.saveProfs?.includes(a);
+    const bonus = mod(finalScore(a)) + (prof ? p : 0);
+    return `<tr>
+      <td style="width:18px;color:${prof?'#c9a84c':'#bbb'};font-size:.8rem">${prof?'●':'○'}</td>
+      <td style="font-size:.82rem;padding:2px 4px">${ABILITY_NAMES[a]}</td>
+      <td style="text-align:right;font-weight:700;font-size:.85rem;font-family:'Cinzel',serif;color:${prof?'#6b3800':'#555'}">${fmod(bonus)}</td>
+    </tr>`;
+  }).join('');
+
+  // ── Attacks table ──
+  const attacksHtml = c.attacks?.length ? `
+    <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+      <tr style="font-size:.68rem;color:#6b3800;font-family:'Cinzel',serif;background:#fdf5e0">
+        <th style="padding:4px 8px;text-align:left">Weapon / Attack</th>
+        <th style="padding:4px 8px;text-align:left">Bonus</th>
+        <th style="padding:4px 8px;text-align:left">Damage</th>
+        <th style="padding:4px 8px;text-align:left">Type</th>
+      </tr>
+      ${c.attacks.map(a => `<tr>
+        <td style="padding:5px 8px;border-bottom:1px solid #f0e6c8;font-weight:600">${a.name}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f0e6c8;font-family:'Cinzel',serif;color:#6b3800;font-weight:700">${a.bonus}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f0e6c8">${a.dmg}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f0e6c8;color:#555">${a.type||''}</td>
+      </tr>`).join('')}
+    </table>` : '<div style="color:#888;font-style:italic;font-size:.85rem">No attacks recorded.</div>';
+
+  // ── Equipment table ──
+  const equipHtml = c.equipment?.length ? `
+    <table style="width:100%;border-collapse:collapse;font-size:.84rem">
+      <tr style="font-size:.68rem;color:#6b3800;font-family:'Cinzel',serif;background:#fdf5e0">
+        <th style="padding:4px 8px;text-align:left">Item</th>
+        <th style="padding:4px 8px;text-align:center">Qty</th>
+        <th style="padding:4px 8px;text-align:right">Weight</th>
+        <th style="padding:4px 8px;text-align:left">Notes</th>
+      </tr>
+      ${c.equipment.map(e => `<tr>
+        <td style="padding:5px 8px;border-bottom:1px solid #f0e6c8;font-weight:600">${e.name}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f0e6c8;text-align:center">${e.qty}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f0e6c8;text-align:right;color:#888">${e.wt}lb</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #f0e6c8;color:#555;font-style:italic">${e.note||''}</td>
+      </tr>`).join('')}
+    </table>` : '';
+
+  // ── Death saves pips ──
+  const dsPips = (count, type) => Array(3).fill(0).map((_, i) =>
+    `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;${i < count ? (type==='success'?'background:#2ecc71;border:1.5px solid #2ecc71':'background:#e74c3c;border:1.5px solid #e74c3c') : 'background:transparent;border:1.5px solid #aaa'};margin:0 2px"></span>`
+  ).join('');
+
+  // ── Features ──
+  const featuresHtml = (() => {
+    const parts = [];
+    // Class features at current level
+    const cf = CLASS_FEATURES[c.cls] || {};
+    const classFeats = [];
+    for (let i = 1; i <= lvl; i++) { if (cf[i]) cf[i].forEach(f => classFeats.push({ lvl:i, text:f })); }
+    if (classFeats.length) {
+      parts.push(`<div style="margin-bottom:10px">
+        <div style="font-family:'Cinzel',serif;font-size:.72rem;color:#6b3800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;padding-bottom:2px;border-bottom:1px solid #c9a84c44">${c.cls} Features (Level ${lvl})</div>
+        ${classFeats.map(f => `<div style="padding:3px 0;font-size:.82rem;border-bottom:1px solid #f5ead044"><span style="font-family:'Cinzel',serif;font-size:.68rem;color:#c9a030;min-width:40px;display:inline-block">Lv${f.lvl}</span> ${f.text}</div>`).join('')}
+      </div>`);
+    }
+    // Subclass info
+    if (c.subclass && SUBCLASS_INFO[c.subclass]) {
+      parts.push(`<div style="margin-bottom:10px;padding:8px 10px;background:#fdf5e0;border-left:3px solid #c9a84c">
+        <div style="font-family:'Cinzel',serif;font-size:.78rem;color:#6b3800;margin-bottom:4px">⚜ ${c.subclass}</div>
+        <div style="font-size:.82rem;color:#333;line-height:1.5">${SUBCLASS_INFO[c.subclass]}</div>
+      </div>`);
+    }
+    // Custom features
+    if (c.customFeatures?.length) {
+      parts.push(c.customFeatures.map(f => `<div style="margin-bottom:8px;padding:7px 10px;background:#fdf5e0;border-left:3px solid #c9a030">
+        <div style="font-family:'Cinzel',serif;font-size:.78rem;color:#6b3800;margin-bottom:3px">${f.name}</div>
+        <div style="font-size:.82rem;color:#555;line-height:1.5">${f.desc||''}</div>
+      </div>`).join(''));
+    }
+    return parts.join('') || '<div style="color:#888;font-style:italic;font-size:.85rem">No features recorded.</div>';
+  })();
+
+  // ── Racial traits ──
+  const racialHtml = (() => {
+    const rt = RACE_TRAITS[c.race];
+    if (!rt) return '';
+    const traits = [...(rt.base||[])];
+    if (c.subrace && rt.subraces?.[c.subrace]) traits.push(...rt.subraces[c.subrace]);
+    return traits.map(t =>
+      `<div style="padding:4px 0;border-bottom:1px solid #f0e6c8;font-size:.82rem"><strong style="color:#1a0f00">${t.n}:</strong> <span style="color:#555">${t.d}</span></div>`
+    ).join('');
+  })();
+
+  // ── Armor proficiencies ──
+  const armorProfStr = [
+    c.armorProfs?.light  && 'Light',
+    c.armorProfs?.medium && 'Medium',
+    c.armorProfs?.heavy  && 'Heavy',
+    c.armorProfs?.shield && 'Shields',
+  ].filter(Boolean).join(', ') || 'None';
+
+  // ── Active conditions ──
+  const condHtml = c.activeConditions?.length
+    ? c.activeConditions.map(cn => `<span style="display:inline-block;padding:2px 9px;border:1px solid #e05555;color:#c04040;font-size:.72rem;border-radius:2px;margin:2px">${cn}</span>`).join('')
+    : '';
+
+  // ── MC classes ──
+  const mcStr = c.mcClasses?.length
+    ? c.mcClasses.map(m => `${m.level} ${m.cls}${m.sub?' ('+m.sub+')':''}`).join(' / ')
+    : '';
+
+  // ── Choices summary ──
+  const choicesHtml = (() => {
+    const ch = c.charChoices || {};
+    if (!Object.keys(ch).length) return '';
+    const rows = [];
+    const pushRow = (label, val) => {
+      if (!val || (Array.isArray(val) && !val.length)) return;
+      rows.push(`<div style="padding:3px 0;border-bottom:1px solid #f0e6c8;font-size:.82rem"><strong style="color:#6b3800;font-family:'Cinzel',serif;font-size:.72rem">${label}:</strong> <span style="color:#333">${Array.isArray(val)?val.join(', '):val}</span></div>`);
+    };
+    // Class choices
+    const ccd = CLASS_CHOICES[c.cls];
+    if (ccd) {
+      for (const [key, def] of Object.entries(ccd)) {
+        if (def.type === 'display') continue;
+        const val = ch['class_' + key];
+        if (val) pushRow(def.label, val);
+      }
+    }
+    // Race choices
+    const rcd = RACE_CHOICES[c.race];
+    if (rcd) {
+      for (const [key, def] of Object.entries(rcd)) {
+        if (def.type === 'display') continue;
+        const val = ch['race_' + key];
+        if (val) pushRow(def.label, val);
+      }
+    }
+    return rows.length ? rows.join('') : '';
+  })();
 
   const win = window.open('', '_blank');
   if (!win) { alert('Pop-up blocked! Please allow pop-ups for this page.'); return; }
 
   win.document.write(`<!DOCTYPE html><html lang="en"><head>
   <meta charset="UTF-8">
-  <title>${c.name || 'Character'} — Character Sheet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${c.name || 'Character'} — Tavern Ledger</title>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
   <style>
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Crimson Text',serif;background:#f5ead0;color:#1a0f00;max-width:1000px;margin:0 auto;padding:20px;font-size:14px;line-height:1.4;}
-    h1{font-family:'Cinzel',serif;color:#6b3800;font-size:1.9rem;border-bottom:3px solid #c9a84c;padding-bottom:6px;margin-bottom:4px;}
-    h2{font-family:'Cinzel',serif;color:#6b3800;font-size:.85rem;letter-spacing:.05em;margin:12px 0 6px;border-bottom:1px solid #c9a84c55;padding-bottom:3px;text-transform:uppercase;}
-    .sub{color:#555;margin-bottom:4px;font-size:.9rem;font-style:italic;}
-    /* Layout */
-    .sheet-header{display:flex;gap:16px;align-items:flex-start;margin-bottom:12px;}
-    .three-col{display:grid;grid-template-columns:200px 1fr 1fr;gap:12px;margin-bottom:12px;}
-    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
-    .full{margin-bottom:12px;}
-    /* Boxes */
-    .sec{background:#fff;border:1px solid #c9a84c88;padding:10px 12px;break-inside:avoid;}
-    .sec-tan{background:#fdf5e0;border:1px solid #c9a84c55;padding:10px 12px;break-inside:avoid;}
-    /* Ability score grid */
-    .ab-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;}
-    .ab-box{background:#fff;border:2px solid #c9a84c;padding:8px 4px;text-align:center;}
-    .ab-name{font-family:'Cinzel',serif;font-size:.55rem;color:#6b3800;letter-spacing:.05em;text-transform:uppercase;}
-    .ab-score{font-size:1.5rem;font-family:'Cinzel',serif;font-weight:700;line-height:1.1;}
-    .ab-mod{font-size:.85rem;color:#c9a84c;font-weight:600;}
-    .ab-racial{font-size:.65rem;color:#888;margin-top:1px;}
-    /* Combat stats */
-    .stat-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px;}
-    .stat-box{background:#fff;border:2px solid #c9a84c;padding:6px 4px;text-align:center;}
-    .stat-val{font-family:'Cinzel',serif;font-size:1.2rem;font-weight:700;}
-    .stat-lbl{font-size:.55rem;color:#6b3800;font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:.04em;}
-    /* Tables */
-    table{width:100%;border-collapse:collapse;}
-    td,th{padding:2px 4px;font-size:.82rem;}
-    tr{border-bottom:1px solid #c9a84c18;}
-    /* Passive scores */
-    .passive-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #c9a84c18;font-size:.84rem;}
-    .passive-val{font-family:'Cinzel',serif;font-weight:700;color:#6b3800;font-size:.9rem;}
-    /* Death saves */
-    .ds-pip{display:inline-block;width:12px;height:12px;border-radius:50%;border:1.5px solid #aaa;margin:0 2px;vertical-align:middle;}
-    .ds-pip.filled-s{background:#55a055;border-color:#55a055;}
-    .ds-pip.filled-f{background:#e05555;border-color:#e05555;}
-    /* Spell slot pips */
-    .slot-used{display:inline-block;width:10px;height:10px;border-radius:50%;background:#c9a84c;margin:1px;}
-    .slot-empty{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid #c9a84c;margin:1px;}
-    /* Conditions */
-    .condition-tag{display:inline-block;padding:1px 6px;border:1px solid #e05555;color:#e05555;font-size:.72rem;margin:2px;border-radius:2px;}
-    /* Print */
-    .print-btn{background:#c9a84c;border:none;padding:8px 20px;font-family:'Cinzel',serif;cursor:pointer;font-size:.85rem;margin-bottom:14px;border-radius:2px;}
-    @media print{.print-btn{display:none;}body{padding:8px;}h2{margin:8px 0 4px;}td,th{padding:1px 3px;}}
-    p{margin-bottom:4px;}
-    .feature-name{font-weight:600;color:#6b3800;}
-  </style></head><body>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Crimson Text',serif;background:#f5ead0;color:#1a0f00;max-width:1050px;margin:0 auto;padding:20px;font-size:14px;line-height:1.45}
+    h2{font-family:'Cinzel',serif;color:#6b3800;font-size:.8rem;letter-spacing:.07em;text-transform:uppercase;margin:16px 0 8px;padding-bottom:4px;border-bottom:2px solid #c9a84c66}
+    .sec{background:#fff;border:1px solid #c9a84c66;padding:12px 14px;margin-bottom:10px}
+    .sec-tan{background:#fdf5e0;border:1px solid #c9a84c44;padding:12px 14px;margin-bottom:10px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .ab-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px}
+    .ab-box{background:#fff;border:2px solid #c9a84c;padding:8px 4px;text-align:center;border-radius:2px}
+    .ab-name{font-family:'Cinzel',serif;font-size:.55rem;color:#6b3800;letter-spacing:.05em;text-transform:uppercase}
+    .ab-score{font-size:1.6rem;font-family:'Cinzel',serif;font-weight:700;line-height:1.1;color:#1a0f00}
+    .ab-mod{font-size:.9rem;color:#c9a030;font-weight:700}
+    .ab-racial{font-size:.62rem;color:#999;margin-top:1px}
+    .stat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px}
+    .stat-box{background:#fff;border:2px solid #c9a84c;padding:8px 4px;text-align:center;border-radius:2px}
+    .stat-val{font-family:'Cinzel',serif;font-size:1.25rem;font-weight:700;line-height:1;color:#1a0f00}
+    .stat-lbl{font-family:'Cinzel',serif;font-size:.55rem;color:#6b3800;text-transform:uppercase;letter-spacing:.04em;margin-top:3px}
+    .hp-bar-wrap{background:#e8d5b0;height:10px;border-radius:4px;overflow:hidden;margin:6px 0}
+    .hp-bar-fill{height:100%;transition:width .3s;border-radius:4px}
+    .print-btn{background:#c9a84c;border:none;padding:9px 22px;font-family:'Cinzel',serif;cursor:pointer;font-size:.82rem;margin-bottom:14px;border-radius:2px;letter-spacing:.04em}
+    .print-btn:hover{background:#b8973b}
+    table{width:100%;border-collapse:collapse}
+    .ds-pip{display:inline-block;width:13px;height:13px;border-radius:50%;margin:0 2px;vertical-align:middle}
+    .badge{display:inline-block;padding:2px 9px;font-family:'Cinzel',serif;font-size:.68rem;border:1px solid #c9a84c88;color:#6b3800;margin:2px;border-radius:2px}
+    .currency-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:6px}
+    .currency-box{background:#fdf5e0;border:1px solid #c9a84c44;padding:8px 4px;text-align:center;border-radius:2px}
+    .currency-val{font-family:'Cinzel',serif;font-size:1.1rem;font-weight:700;color:#1a0f00}
+    .currency-lbl{font-size:.62rem;font-family:'Cinzel',serif;color:#6b3800;text-transform:uppercase;letter-spacing:.04em}
+    @media print{
+      .print-btn{display:none}
+      body{padding:8px;background:#fff}
+      .sec,.sec-tan{border:1px solid #ccc;break-inside:avoid}
+      h2{font-size:.72rem}
+    }
+  </style>
+</head><body>
 
-  <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+<button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
 
-  <!-- ── HEADER ── -->
-  <div class="sheet-header">
+<!-- ══ HEADER ══ -->
+<div class="sec" style="margin-bottom:12px">
+  <div style="display:flex;gap:14px;align-items:flex-start">
+    ${c.portrait ? `<img src="${c.portrait}" style="width:80px;height:100px;object-fit:cover;border:2px solid #c9a84c;border-radius:2px;flex-shrink:0" onerror="this.remove()">` : ''}
     <div style="flex:1">
-      <h1>${c.name || 'Unnamed Adventurer'}</h1>
-      <div class="sub">
-        Level ${lvl}
-        ${c.race||'?'}${c.subrace ? ' ('+c.subrace+')' : ''}
+      <div style="font-family:'Cinzel',serif;color:#6b3800;font-size:2rem;line-height:1;margin-bottom:4px">${c.name || 'Unnamed Adventurer'}</div>
+      <div style="font-size:.9rem;color:#555;margin-bottom:6px">
+        Level <strong>${lvl}</strong>
+        ${c.race||'?'}${c.subrace?' ('+c.subrace+')':''}
         &nbsp;·&nbsp;
-        ${c.cls||'?'}${c.subclass ? ' — '+c.subclass : ''}
-        ${c.mcClasses?.length ? ' / '+c.mcClasses.map(m=>m.level+' '+m.cls+(m.sub?' ('+m.sub+')':'')).join(' / ') : ''}
+        <strong>${c.cls||'?'}</strong>${c.subclass?' — '+c.subclass:''}
+        ${mcStr ? ' / '+mcStr : ''}
         &nbsp;·&nbsp; ${c.background||'No Background'}
         &nbsp;·&nbsp; ${c.alignment||'Unaligned'}
       </div>
-      <div class="sub">
-        XP: <strong>${(c.xp||0).toLocaleString()}</strong>
-        &nbsp;·&nbsp; Proficiency Bonus: <strong>${fmod(p)}</strong>
-        &nbsp;·&nbsp; Inspiration: <strong>${c.inspiration ? '★ Yes' : 'No'}</strong>
-        ${c.exhaustion > 0 ? `&nbsp;·&nbsp; <span style="color:#e05555">Exhaustion: ${c.exhaustion}</span>` : ''}
-        ${c.concentration ? `&nbsp;·&nbsp; Concentrating: <strong style="color:#c9a84c">${c.concentration}</strong>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">
+        <span class="badge">XP: ${(c.xp||0).toLocaleString()}</span>
+        <span class="badge">Prof Bonus: +${p}</span>
+        ${c.inspiration?'<span class="badge" style="background:#fdf5e0;border-color:#c9a030;color:#9a7010">★ Inspired</span>':''}
+        ${c.exhaustion>0?`<span class="badge" style="border-color:#c04040;color:#c04040">Exhaustion ${c.exhaustion}</span>`:''}
+        ${c.concentration?`<span class="badge" style="border-color:#6a8a3a;color:#4a6a1a">© ${c.concentration}</span>`:''}
       </div>
+      ${condHtml ? `<div style="margin-top:4px"><strong style="font-family:'Cinzel',serif;font-size:.7rem;color:#6b3800">CONDITIONS:</strong> ${condHtml}</div>` : ''}
     </div>
-    ${c.portrait ? `<img src="${c.portrait}" style="width:80px;height:100px;object-fit:cover;border:2px solid #c9a84c;flex-shrink:0" onerror="this.remove()">` : ''}
+  </div>
+</div>
+
+<!-- ══ ABILITY SCORES ══ -->
+<div class="ab-grid">
+  ${ABILITIES.map(a => {
+    const base  = parseInt(scores[a]) || 10;
+    const bonus = racial[a] || 0;
+    const total = base + bonus;
+    return `<div class="ab-box">
+      <div class="ab-name">${ABILITY_NAMES[a]}</div>
+      <div class="ab-score">${total}</div>
+      <div class="ab-mod">${fmod(mod(total))}</div>
+      ${bonus ? `<div class="ab-racial">Base ${base} +${bonus}</div>` : ''}
+    </div>`;
+  }).join('')}
+</div>
+
+<!-- ══ COMBAT STATS ══ -->
+<div class="stat-grid">
+  <div class="stat-box"><div class="stat-lbl">Armor Class</div><div class="stat-val">${c.ac||10}</div></div>
+  <div class="stat-box"><div class="stat-lbl">Initiative</div><div class="stat-val">${fmod(dex)}</div></div>
+  <div class="stat-box"><div class="stat-lbl">Speed</div><div class="stat-val">${c.speed||30}<span style="font-size:.7rem">ft</span></div></div>
+  <div class="stat-box"><div class="stat-lbl">Max HP</div><div class="stat-val">${c.maxhp||0}</div></div>
+  <div class="stat-box" style="position:relative">
+    <div class="stat-lbl">Current HP</div>
+    <div class="stat-val" style="color:${hpColor}">${c.curhp||0}</div>
+    <div style="position:absolute;bottom:4px;left:8px;right:8px;height:4px;background:#eee;border-radius:2px;overflow:hidden"><div style="height:100%;width:${hpPct}%;background:${hpColor};border-radius:2px"></div></div>
+  </div>
+  <div class="stat-box"><div class="stat-lbl">Temp HP</div><div class="stat-val">${c.temphp||0}</div></div>
+</div>
+
+<!-- ══ THREE COLUMN LAYOUT ══ -->
+<div class="grid3" style="margin-bottom:10px">
+
+  <!-- LEFT: Saves + Passives + Death Saves + Hit Dice -->
+  <div>
+    <div class="sec">
+      <h2>Saving Throws</h2>
+      <table>${saveRows}</table>
+    </div>
+    <div class="sec" style="margin-top:0">
+      <h2>Passive Scores</h2>
+      <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0e6c8;font-size:.82rem"><span>Perception</span><strong style="font-family:'Cinzel',serif">${passivePerc}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0e6c8;font-size:.82rem"><span>Investigation</span><strong style="font-family:'Cinzel',serif">${passiveInv}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:.82rem"><span>Insight</span><strong style="font-family:'Cinzel',serif">${passiveIns}</strong></div>
+    </div>
+    <div class="sec" style="margin-top:0">
+      <h2>Hit Dice &amp; Death Saves</h2>
+      <div style="font-size:.85rem;margin-bottom:8px">
+        <strong>${lvl}d${CLASS_DATA[c.cls]?.hd||8}</strong> &nbsp;·&nbsp; Remaining: <strong>${c.hitdiceRemain ?? lvl}</strong>
+      </div>
+      <div style="font-size:.75rem;color:#2a7a2a;font-family:'Cinzel',serif;margin-bottom:3px">SUCCESSES</div>
+      <div style="margin-bottom:6px">${dsPips(c.deathSuccesses||0, 'success')}</div>
+      <div style="font-size:.75rem;color:#c04040;font-family:'Cinzel',serif;margin-bottom:3px">FAILURES</div>
+      <div>${dsPips(c.deathFailures||0, 'fail')}</div>
+    </div>
   </div>
 
-  <!-- ── ABILITY SCORES ── -->
-  <div class="ab-grid">
-    ${ABILITIES.map(a => {
-      const base = parseInt(scores[a]) || 10;
-      const bonus = racial[a] || 0;
-      const total = base + bonus;
-      return `<div class="ab-box">
-        <div class="ab-name">${ABILITY_NAMES[a]}</div>
-        <div class="ab-score">${total}</div>
-        <div class="ab-mod">${fmod(mod(total))}</div>
-        ${bonus ? `<div class="ab-racial">Base ${base} +${bonus} racial</div>` : ''}
+  <!-- MIDDLE: Skills -->
+  <div class="sec">
+    <h2>Skills</h2>
+    <table>${skillRows}</table>
+  </div>
+
+  <!-- RIGHT: Proficiencies + Combat Notes -->
+  <div>
+    <div class="sec">
+      <h2>Proficiencies</h2>
+      <div style="font-size:.82rem;margin-bottom:5px"><strong style="font-family:'Cinzel',serif;font-size:.72rem;color:#6b3800">ARMOR:</strong> ${armorProfStr}</div>
+      ${c.profs ? `<div style="font-size:.82rem;margin-bottom:5px"><strong style="font-family:'Cinzel',serif;font-size:.72rem;color:#6b3800">WEAPONS &amp; TOOLS:</strong><br>${c.profs}</div>` : ''}
+      ${c.languages ? `<div style="font-size:.82rem"><strong style="font-family:'Cinzel',serif;font-size:.72rem;color:#6b3800">LANGUAGES:</strong><br>${c.languages}</div>` : ''}
+    </div>
+    ${c.spellAbility ? `<div class="sec" style="margin-top:0">
+      <h2>Spellcasting</h2>
+      <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0e6c8;font-size:.82rem"><span>Ability</span><strong>${spellAbFull}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0e6c8;font-size:.82rem"><span>Spell Save DC</span><strong style="font-family:'Cinzel',serif">${spellDC}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:.82rem"><span>Attack Bonus</span><strong style="font-family:'Cinzel',serif">${fmod(spellAtk)}</strong></div>
+    </div>` : ''}
+    <div class="sec" style="margin-top:0">
+      <h2>Physical</h2>
+      ${[['Age',c.age],['Height',c.height],['Weight',c.weight],['Eyes',c.eyes],['Hair',c.hair],['Skin',c.skin]].filter(([,v])=>v).map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #f0e6c8;font-size:.82rem"><span style="color:#888">${l}</span><span>${v}</span></div>`).join('')}
+    </div>
+  </div>
+
+</div><!-- end grid3 -->
+
+<!-- ══ ATTACKS ══ -->
+<div class="sec">
+  <h2>Attacks &amp; Actions</h2>
+  ${attacksHtml}
+</div>
+
+<!-- ══ SPELL SLOTS ══ -->
+${c.spellAbility && c.spells?.length ? `<div class="sec">
+  <h2>Spell Slots</h2>
+  ${slotHtml || '<div style="font-size:.84rem;color:#888">No slot data — refresh spell slots in the character editor.</div>'}
+</div>` : ''}
+
+<!-- ══ SPELLS ══ -->
+${c.spells?.length ? `<div class="sec">
+  <h2>Spellbook / Known Spells ${spellAbFull ? `<span style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Crimson Text',serif;font-size:.88rem;color:#888">· ${spellAbFull} · DC ${spellDC} · ${fmod(spellAtk)} to hit</span>` : ''}</h2>
+  ${spellsHtml}
+</div>` : ''}
+
+<!-- ══ EQUIPMENT & CURRENCY ══ -->
+<div class="sec">
+  <h2>Currency</h2>
+  <div class="currency-grid">
+    <div class="currency-box"><div class="currency-val">${c.cp||0}</div><div class="currency-lbl">Copper</div></div>
+    <div class="currency-box"><div class="currency-val">${c.sp||0}</div><div class="currency-lbl">Silver</div></div>
+    <div class="currency-box"><div class="currency-val">${c.ep||0}</div><div class="currency-lbl">Electrum</div></div>
+    <div class="currency-box" style="border-color:#c9a84c88"><div class="currency-val" style="color:#9a7010">${c.gp||0}</div><div class="currency-lbl">Gold</div></div>
+    <div class="currency-box"><div class="currency-val">${c.pp||0}</div><div class="currency-lbl">Platinum</div></div>
+  </div>
+  <div style="font-size:.78rem;color:#888;margin-top:6px">Total equivalent: <strong>${totalGP.toFixed(2)} gp</strong></div>
+</div>
+
+${c.equipment?.length ? `<div class="sec">
+  <h2>Inventory</h2>
+  ${equipHtml}
+</div>` : ''}
+
+<!-- ══ FEATS ══ -->
+${c.feats?.length ? `<div class="sec">
+  <h2>Feats</h2>
+  <div style="display:flex;flex-wrap:wrap;gap:5px">
+    ${c.feats.map(f => {
+      const info = FEATS_INFO[f] || '';
+      return `<div style="padding:5px 10px;border:1px solid #c9a84c66;border-radius:2px;background:#fdf5e0;max-width:320px">
+        <div style="font-family:'Cinzel',serif;font-size:.78rem;font-weight:600;color:#6b3800">${f}</div>
+        ${info ? `<div style="font-size:.76rem;color:#555;margin-top:2px;line-height:1.4">${info}</div>` : ''}
       </div>`;
     }).join('')}
   </div>
+</div>` : ''}
 
-  <!-- ── COMBAT STATS ── -->
-  <div class="stat-row">
-    <div class="stat-box"><div class="stat-lbl">Armor Class</div><div class="stat-val">${c.ac||10}</div></div>
-    <div class="stat-box"><div class="stat-lbl">Initiative</div><div class="stat-val">${fmod(dex)}</div></div>
-    <div class="stat-box"><div class="stat-lbl">Speed</div><div class="stat-val">${c.speed||30}<span style="font-size:.7rem">ft</span></div></div>
-    <div class="stat-box"><div class="stat-lbl">Max HP</div><div class="stat-val">${c.maxhp||0}</div></div>
-    <div class="stat-box"><div class="stat-lbl">Current HP</div><div class="stat-val" style="color:${(c.curhp||0)<(c.maxhp||1)/2?'#e05555':'inherit'}">${c.curhp||0}</div></div>
-    <div class="stat-box"><div class="stat-lbl">Temp HP</div><div class="stat-val">${c.temphp||0}</div></div>
+<!-- ══ CLASS CHOICES ══ -->
+${choicesHtml ? `<div class="sec">
+  <h2>Class &amp; Race Choices</h2>
+  ${choicesHtml}
+</div>` : ''}
+
+<!-- ══ RACIAL TRAITS ══ -->
+${racialHtml ? `<div class="sec">
+  <h2>Racial Traits — ${c.race}${c.subrace?' ('+c.subrace+')':''}</h2>
+  ${racialHtml}
+</div>` : ''}
+
+<!-- ══ FEATURES & ABILITIES ══ -->
+<div class="sec">
+  <h2>Features &amp; Abilities</h2>
+  ${featuresHtml}
+</div>
+
+<!-- ══ PERSONALITY ══ -->
+${(c.traits||c.ideals||c.bonds||c.flaws) ? `<div class="grid2">
+  <div class="sec">
+    <h2>Personality</h2>
+    ${c.traits  ? `<div style="margin-bottom:8px"><strong style="font-family:'Cinzel',serif;font-size:.72rem;color:#6b3800">TRAITS:</strong><p style="font-size:.85rem;color:#333;margin-top:2px">${c.traits}</p></div>` : ''}
+    ${c.ideals  ? `<div style="margin-bottom:8px"><strong style="font-family:'Cinzel',serif;font-size:.72rem;color:#6b3800">IDEALS:</strong><p style="font-size:.85rem;color:#333;margin-top:2px">${c.ideals}</p></div>` : ''}
+    ${c.bonds   ? `<div style="margin-bottom:8px"><strong style="font-family:'Cinzel',serif;font-size:.72rem;color:#6b3800">BONDS:</strong><p style="font-size:.85rem;color:#333;margin-top:2px">${c.bonds}</p></div>` : ''}
+    ${c.flaws   ? `<div><strong style="font-family:'Cinzel',serif;font-size:.72rem;color:#6b3800">FLAWS:</strong><p style="font-size:.85rem;color:#333;margin-top:2px">${c.flaws}</p></div>` : ''}
   </div>
-
-  <!-- ── THREE COLUMNS ── -->
-  <div class="three-col">
-
-    <!-- LEFT: Saves, Passives, Death Saves, Hit Dice -->
-    <div>
-      <div class="sec" style="margin-bottom:8px">
-        <h2>Saving Throws</h2>
-        <table>${saveRows}</table>
-      </div>
-
-      <div class="sec" style="margin-bottom:8px">
-        <h2>Passive Scores</h2>
-        <div class="passive-row"><span>Passive Perception</span><span class="passive-val">${passivePerc}</span></div>
-        <div class="passive-row"><span>Passive Investigation</span><span class="passive-val">${passiveInv}</span></div>
-        <div class="passive-row"><span>Passive Insight</span><span class="passive-val">${passiveIns}</span></div>
-      </div>
-
-      <div class="sec" style="margin-bottom:8px">
-        <h2>Hit Dice</h2>
-        <div style="font-size:.9rem">
-          <strong>${lvl}d${CLASS_DATA[c.cls]?.hd||8}</strong>
-          &nbsp;·&nbsp; Remaining: <strong>${c.hitDiceRemain ?? lvl}</strong>
-        </div>
-      </div>
-
-      <div class="sec">
-        <h2>Death Saving Throws</h2>
-        <div style="margin-bottom:4px">
-          <span style="font-size:.78rem;color:#55a055">Successes: </span>
-          ${[0,1,2].map(i=>`<span class="ds-pip${(c.deathSuccesses||0)>i?' filled-s':''}"></span>`).join('')}
-        </div>
-        <div>
-          <span style="font-size:.78rem;color:#e05555">Failures: </span>
-          ${[0,1,2].map(i=>`<span class="ds-pip${(c.deathFailures||0)>i?' filled-f':''}"></span>`).join('')}
-        </div>
-      </div>
-    </div>
-
-    <!-- MIDDLE: Skills -->
-    <div class="sec">
-      <h2>Skills</h2>
-      <table>${skillRows}</table>
-    </div>
-
-    <!-- RIGHT: Proficiencies, Attacks, Conditions -->
-    <div>
-      <div class="sec" style="margin-bottom:8px">
-        <h2>Proficiencies</h2>
-        <p><strong>Armor:</strong> ${armorProfs}</p>
-        ${c.profs ? `<p><strong>Weapons & Tools:</strong> ${c.profs}</p>` : ''}
-        ${c.languages ? `<p><strong>Languages:</strong> ${c.languages}</p>` : ''}
-      </div>
-
-      ${c.attacks?.length ? `<div class="sec" style="margin-bottom:8px">
-        <h2>Attacks & Actions</h2>
-        <table>
-          <tr style="font-size:.72rem;color:#6b3800"><td><b>Name</b></td><td><b>Bonus</b></td><td><b>Damage</b></td><td><b>Type</b></td></tr>
-          ${c.attacks.map(a=>`<tr><td>${a.name}</td><td>${a.bonus}</td><td>${a.dmg}</td><td>${a.type||''}</td></tr>`).join('')}
-        </table>
-      </div>` : ''}
-
-      ${(c.activeConditions?.length) ? `<div class="sec" style="margin-bottom:8px">
-        <h2>Active Conditions</h2>
-        ${c.activeConditions.map(cn=>`<span class="condition-tag">${cn}</span>`).join('')}
-      </div>` : ''}
-
-      <div class="sec">
-        <h2>Armor & Combat</h2>
-        <div class="passive-row"><span>Armor Class</span><span class="passive-val">${c.ac||10}</span></div>
-        <div class="passive-row"><span>Initiative</span><span class="passive-val">${fmod(dex)}</span></div>
-        ${c.spellAbility ? `<div class="passive-row"><span>Spell Save DC</span><span class="passive-val">${spellDC}</span></div>
-        <div class="passive-row"><span>Spell Attack Bonus</span><span class="passive-val">${fmod(spellAtk)}</span></div>` : ''}
-      </div>
-    </div>
+  <div>
+    ${c.extraTraits ? `<div class="sec"><h2>Additional Traits</h2><p style="font-size:.85rem;color:#333">${c.extraTraits}</p></div>` : ''}
+    ${c.allies      ? `<div class="sec"><h2>Allies &amp; Organizations</h2><p style="font-size:.85rem;color:#333">${c.allies}</p></div>` : ''}
   </div>
+</div>` : ''}
 
-  <!-- ── SPELLS ── -->
-  ${c.spells?.length ? `<div class="full sec">
-    <h2>Spells ${c.spellAbility ? `· Save DC ${spellDC} · Atk ${fmod(spellAtk)} · Ability: ${c.spellAbility}` : ''}</h2>
-    ${slotDisplay ? `<div style="margin-bottom:8px"><strong style="font-size:.78rem;color:#6b3800">SPELL SLOTS (remaining/total):</strong><br>${slotDisplay}</div>` : ''}
-    <table>
-      <tr style="font-size:.72rem;color:#6b3800"><td><b>Name</b></td><td><b>Lvl</b></td><td><b>School</b></td><td><b>Cast Time</b></td><td><b>Range</b></td><td><b>Damage</b></td><td><b>Save</b></td><td><b>Conc</b></td><td><b>Ritual</b></td></tr>
-      ${c.spells.map(s=>`<tr>
-        <td><strong>${s.name}</strong></td>
-        <td>${s.level===0?'C':'L'+s.level}</td>
-        <td>${s.school||'—'}</td>
-        <td>${s.castTime||'—'}</td>
-        <td>${s.range||'—'}</td>
-        <td>${s.damage||'—'}</td>
-        <td>${s.save||'—'}</td>
-        <td>${s.concentration==='yes'?'©':''}</td>
-        <td>${s.ritual==='yes'?'(R)':''}</td>
-      </tr>`).join('')}
-    </table>
-  </div>` : ''}
+<!-- ══ BACKSTORY ══ -->
+${c.backstory ? `<div class="sec"><h2>Backstory</h2><p style="font-size:.88rem;color:#333;white-space:pre-wrap;line-height:1.6">${c.backstory}</p></div>` : ''}
 
-  <!-- ── EQUIPMENT ── -->
-  ${c.equipment?.length ? `<div class="full sec">
-    <h2>Equipment & Currency</h2>
-    <div style="margin-bottom:6px;font-size:.85rem">
-      ${c.cp?c.cp+'cp ':''}${c.sp?c.sp+'sp ':''}${c.ep?c.ep+'ep ':''}${c.gp?c.gp+'gp ':''}${c.pp?c.pp+'pp':''}
-    </div>
-    <table>
-      <tr style="font-size:.72rem;color:#6b3800"><td><b>Item</b></td><td><b>Qty</b></td><td><b>Weight</b></td><td><b>Notes</b></td></tr>
-      ${c.equipment.map(e=>`<tr><td>${e.name}</td><td>${e.qty}</td><td>${e.wt}lb</td><td>${e.note||''}</td></tr>`).join('')}
-    </table>
-  </div>` : ''}
+<!-- ══ NOTES ══ -->
+${c.notes  ? `<div class="sec"><h2>Session Notes</h2><p style="font-size:.88rem;color:#333;white-space:pre-wrap;line-height:1.6">${c.notes}</p></div>` : ''}
+${c.quests ? `<div class="sec"><h2>Quest Log</h2><p style="font-size:.88rem;color:#333;white-space:pre-wrap;line-height:1.6">${c.quests}</p></div>` : ''}
+${c.treasure?`<div class="sec"><h2>Treasure &amp; Loot</h2><p style="font-size:.88rem;color:#333;white-space:pre-wrap;line-height:1.6">${c.treasure}</p></div>` : ''}
 
-  <!-- ── FEATS ── -->
-  ${c.feats?.length ? `<div class="full sec">
-    <h2>Feats</h2>
-    <div style="display:flex;flex-wrap:wrap;gap:4px">
-      ${c.feats.map(f=>`<span style="padding:2px 8px;border:1px solid #c9a84c88;font-size:.84rem">${f}</span>`).join('')}
-    </div>
-  </div>` : ''}
-
-  <!-- ── CLASS & RACE CHOICES ── -->
-  ${(() => {
-    const ch = c.charChoices || {};
-    if (!Object.keys(ch).length) return '';
-    const cls   = c.cls   || '';
-    const race  = c.race  || '';
-    const sub   = c.subclass || '';
-    const lvl   = c.level || 1;
-    let rows = '';
-
-    // Helper: render a choice entry
-    const row = (label, val) => {
-      if (!val || (Array.isArray(val) && !val.length)) return '';
-      const display = Array.isArray(val) ? val.join(', ') : val;
-      return `<div style="margin-bottom:5px"><span class="feature-name">${label}:</span> ${display}</div>`;
-    };
-
-    // Class choices
-    const ccd = CLASS_CHOICES[cls];
-    if (ccd) {
-      for (const [key, def] of Object.entries(ccd)) {
-        const val = ch['class_' + key];
-        if (!val || (Array.isArray(val) && !val.length)) continue;
-        if (def.unlocksAt && lvl < def.unlocksAt) continue;
-        if (def.type === 'display') continue;
-        // For invocations show each with description
-        if (def.type === 'multi' && key === 'invocations' && Array.isArray(val)) {
-          rows += `<div style="margin-bottom:5px"><span class="feature-name">${def.label}:</span><ul style="margin:3px 0 0 16px">`;
-          val.forEach(inv => {
-            const opt = def.options.find(o => o.v === inv);
-            rows += `<li style="font-size:.84rem">${inv}${opt?.d ? ' — <span style="color:#555">' + opt.d + '</span>' : ''}</li>`;
-          });
-          rows += '</ul></div>';
-        } else {
-          rows += row(def.label, val);
-        }
-      }
-    }
-
-    // Race choices
-    const rcd = RACE_CHOICES[race];
-    if (rcd) {
-      for (const [key, def] of Object.entries(rcd)) {
-        const val = ch['race_' + key];
-        if (!val || (Array.isArray(val) && !val.length)) continue;
-        if (def.type === 'display') continue;
-        rows += row(def.label, val);
-      }
-    }
-
-    // Subclass features block
-    const sf = SUBCLASS_FEATURES[sub];
-    if (sf && sub) {
-      rows += `<div style="margin-bottom:5px;margin-top:8px"><span class="feature-name" style="font-size:.88rem">${sub} Features:</span><ul style="margin:3px 0 0 16px">`;
-      for (const [feat, desc] of Object.entries(sf)) {
-        rows += `<li style="font-size:.82rem;margin-bottom:3px"><strong>${feat}:</strong> <span style="color:#555">${desc}</span></li>`;
-      }
-      rows += '</ul></div>';
-    }
-
-    return rows ? `<div class="full sec"><h2>Class &amp; Race Choices</h2>${rows}</div>` : '';
-  })()}
-
-  <!-- ── FEATURES ── -->
-  ${c.customFeatures?.length ? `<div class="full sec">
-    <h2>Features & Traits</h2>
-    ${c.customFeatures.map(f=>`<div style="margin-bottom:6px"><span class="feature-name">${f.name}:</span> ${f.desc||''}</div>`).join('')}
-  </div>` : ''}
-
-  <!-- ── PERSONALITY & BACKSTORY ── -->
-  <div class="two-col">
-    ${(c.traits||c.ideals||c.bonds||c.flaws) ? `<div class="sec">
-      <h2>Personality</h2>
-      ${c.traits  ? `<p><strong>Traits:</strong> ${c.traits}</p>` : ''}
-      ${c.ideals  ? `<p><strong>Ideals:</strong> ${c.ideals}</p>` : ''}
-      ${c.bonds   ? `<p><strong>Bonds:</strong> ${c.bonds}</p>` : ''}
-      ${c.flaws   ? `<p><strong>Flaws:</strong> ${c.flaws}</p>` : ''}
-    </div>` : '<div></div>'}
-    ${(c.age||c.height||c.weight||c.eyes||c.hair||c.skin) ? `<div class="sec">
-      <h2>Physical Description</h2>
-      ${c.age    ? `<p><strong>Age:</strong> ${c.age}</p>` : ''}
-      ${c.height ? `<p><strong>Height:</strong> ${c.height}</p>` : ''}
-      ${c.weight ? `<p><strong>Weight:</strong> ${c.weight}</p>` : ''}
-      ${c.eyes   ? `<p><strong>Eyes:</strong> ${c.eyes}</p>` : ''}
-      ${c.hair   ? `<p><strong>Hair:</strong> ${c.hair}</p>` : ''}
-      ${c.skin   ? `<p><strong>Skin:</strong> ${c.skin}</p>` : ''}
-    </div>` : '<div></div>'}
-  </div>
-
-  ${c.backstory ? `<div class="full sec"><h2>Backstory</h2><p style="white-space:pre-wrap">${c.backstory}</p></div>` : ''}
-  ${c.allies    ? `<div class="full sec"><h2>Allies & Organizations</h2><p>${c.allies}</p></div>` : ''}
-  ${c.notes     ? `<div class="full sec"><h2>Session Notes</h2><p style="white-space:pre-wrap">${c.notes}</p></div>` : ''}
-
-  </body></html>`);
+</body></html>`);
   win.document.close();
 }
 

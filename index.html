@@ -5955,6 +5955,28 @@ function viewCharacter(id) {
   const c      = data.characters.find(x => x.id === id);
   if (!c) return;
 
+  // ── Null-safety: patch any incomplete character data ──
+  c.spellSlots       = c.spellSlots       || {};
+  c.spells           = c.spells           || [];
+  c.equipment        = c.equipment        || [];
+  c.attacks          = c.attacks          || [];
+  c.feats            = c.feats            || [];
+  c.customFeatures   = c.customFeatures   || [];
+  c.skillProfs       = c.skillProfs       || [];
+  c.skillExp         = c.skillExp         || [];
+  c.saveProfs        = c.saveProfs        || [];
+  c.activeConditions = c.activeConditions || [];
+  c.mcClasses        = c.mcClasses        || [];
+  c.charChoices      = c.charChoices      || {};
+  c.abilityScores    = c.abilityScores    || {};
+  c.armorProfs       = c.armorProfs       || {};
+  c.ac               = c.ac               ?? 10;
+  c.speed            = c.speed            ?? 30;
+  c.maxhp            = c.maxhp            ?? 0;
+  c.curhp            = c.curhp            ?? 0;
+  c.temphp           = c.temphp           ?? 0;
+  c.level            = c.level            || 1;
+
   const scores = c.abilityScores || {};
   const racial = (() => {
     const rd = RACE_DATA[c.race] || {};
@@ -5987,38 +6009,77 @@ function viewCharacter(id) {
 
   // ── Build spell slots display ──
   const slotHtml = (() => {
-    if (!c.spellAbility || !c.spells?.length) return '';
-    const cd = CLASS_DATA[c.cls];
-    if (!cd || !cd.spellAb) return '';
-    const slots = c.spellSlots || {};
-    const entries = Object.entries(slots).filter(([,v]) => v.total > 0);
-    if (!entries.length) return '';
-    const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th'];
-    if (cd.isPact) {
-      const numSlots = WARLOCK_SLOTS[Math.min(lvl,20)] || [0];
-      const slotLvl  = WARLOCK_SLOT_LEVEL[Math.min(lvl,20)] || 1;
-      const s = slots[1] || { total: numSlots[0], used: 0 };
-      return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
-        <div style="background:#fff;border:1px solid #c9a84c88;padding:8px 12px;border-radius:2px;text-align:center;min-width:90px">
-          <div style="font-size:.68rem;color:#6b3800;font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:.05em">Pact Slots (L${slotLvl})</div>
-          <div style="font-size:1.3rem;font-family:'Cinzel',serif;font-weight:700;color:#1a0f00">${s.total-(s.used||0)}/${s.total}</div>
-          <div style="font-size:.68rem;color:#888">Short rest</div>
-        </div>
-      </div>`;
-    }
-    return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
-      ${entries.map(([lvlNum, s]) => {
-        const remaining = s.total - (s.used||0);
-        const pips = Array(s.total).fill(0).map((_,i) =>
-          `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;${i < remaining ? 'background:#c9a84c' : 'background:#ddd;border:1px solid #c9a84c'};margin:1px"></span>`
-        ).join('');
-        return `<div style="background:#fff;border:1px solid #c9a84c88;padding:8px 12px;border-radius:2px;text-align:center;min-width:70px">
-          <div style="font-size:.65rem;color:#6b3800;font-family:'Cinzel',serif;letter-spacing:.04em">${ordinals[parseInt(lvlNum)-1]||lvlNum}</div>
-          <div style="font-size:1.2rem;font-family:'Cinzel',serif;font-weight:700;color:#1a0f00">${remaining}/${s.total}</div>
-          <div>${pips}</div>
+    try {
+      if (!c.spellAbility) return '';
+      const cd = CLASS_DATA[c.cls];
+      if (!cd || !cd.spellAb) return '';
+      const slots = c.spellSlots || {};
+      // Safe filter: skip anything that's not a proper {total, used} object
+      const entries = Object.entries(slots).filter(([, v]) =>
+        v && typeof v === 'object' && typeof v.total === 'number' && v.total > 0
+      );
+      const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th'];
+      // If no saved slot data, compute from level tables
+      if (!entries.length) {
+        const computedSlots = cd.isPact
+          ? WARLOCK_SLOTS[Math.min(lvl, 20)] || [0]
+          : SPELL_SLOTS[Math.min(cd.isHalf ? Math.floor(lvl/2) : lvl, 20)] || [];
+        if (!computedSlots.length || !computedSlots[0]) return '<div style="font-size:.82rem;color:#888;font-style:italic">Open the character editor and do a Long Rest to populate slot counts.</div>';
+        const slotLvl = cd.isPact ? (WARLOCK_SLOT_LEVEL[Math.min(lvl,20)] || 1) : null;
+        if (cd.isPact) {
+          const total = computedSlots[0] || 0;
+          return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+            <div style="background:#fff;border:1px solid #c9a84c88;padding:8px 12px;border-radius:2px;text-align:center;min-width:90px">
+              <div style="font-size:.68rem;color:#6b3800;font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:.05em">Pact Slots (L${slotLvl})</div>
+              <div style="font-size:1.3rem;font-family:'Cinzel',serif;font-weight:700;color:#1a0f00">${total}/${total}</div>
+              <div style="font-size:.68rem;color:#888">Short rest</div>
+            </div>
+          </div>`;
+        }
+        return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+          ${computedSlots.map((total, i) => {
+            if (!total) return '';
+            const pips = Array(total).fill(0).map((_,pi) =>
+              `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#c9a84c;margin:1px"></span>`
+            ).join('');
+            return `<div style="background:#fff;border:1px solid #c9a84c88;padding:8px 12px;border-radius:2px;text-align:center;min-width:70px">
+              <div style="font-size:.65rem;color:#6b3800;font-family:'Cinzel',serif;letter-spacing:.04em">${ordinals[i]||('L'+(i+1))}</div>
+              <div style="font-size:1.2rem;font-family:'Cinzel',serif;font-weight:700;color:#1a0f00">${total}/${total}</div>
+              <div>${pips}</div>
+            </div>`;
+          }).join('')}
         </div>`;
-      }).join('')}
-    </div>`;
+      }
+      if (cd.isPact) {
+        const numSlots = WARLOCK_SLOTS[Math.min(lvl,20)] || [0];
+        const slotLvl  = WARLOCK_SLOT_LEVEL[Math.min(lvl,20)] || 1;
+        const s = slots[1] && typeof slots[1].total === 'number' ? slots[1] : { total: numSlots[0]||0, used: 0 };
+        return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+          <div style="background:#fff;border:1px solid #c9a84c88;padding:8px 12px;border-radius:2px;text-align:center;min-width:90px">
+            <div style="font-size:.68rem;color:#6b3800;font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:.05em">Pact Slots (L${slotLvl})</div>
+            <div style="font-size:1.3rem;font-family:'Cinzel',serif;font-weight:700;color:#1a0f00">${(s.total||0)-(s.used||0)}/${s.total||0}</div>
+            <div style="font-size:.68rem;color:#888">Short rest</div>
+          </div>
+        </div>`;
+      }
+      return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+        ${entries.map(([lvlNum, s]) => {
+          const total     = s.total || 0;
+          const remaining = total - (s.used||0);
+          const pips = Array(total).fill(0).map((_,i) =>
+            `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;${i < remaining ? 'background:#c9a84c' : 'background:#ddd;border:1px solid #c9a84c'};margin:1px"></span>`
+          ).join('');
+          return `<div style="background:#fff;border:1px solid #c9a84c88;padding:8px 12px;border-radius:2px;text-align:center;min-width:70px">
+            <div style="font-size:.65rem;color:#6b3800;font-family:'Cinzel',serif;letter-spacing:.04em">${ordinals[parseInt(lvlNum)-1]||lvlNum}</div>
+            <div style="font-size:1.2rem;font-family:'Cinzel',serif;font-weight:700;color:#1a0f00">${remaining}/${total}</div>
+            <div>${pips}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    } catch(e) {
+      console.warn('slotHtml error:', e);
+      return '';
+    }
   })();
 
   // ── Spells grouped by level ──

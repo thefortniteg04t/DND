@@ -1376,7 +1376,7 @@ const CLASS_DATA = {
   Bard: {
     hd:8, saves:['DEX','CHA'], spellAb:'CHA',
     subs:['College of Lore','College of Valor','College of Glamour','College of Swords',
-          'College of Eloquence','College of Creation','College of Spirits','College of Whispers','College of Tragedy']
+          'College of Eloquence','College of Creation','College of Spirits','College of Whispers','College of Tragedy', 'College of the Moon']
   },
   Cleric: {
     hd:8, saves:['WIS','CHA'], spellAb:'WIS',
@@ -1391,7 +1391,7 @@ const CLASS_DATA = {
   },
   Fighter: {
     hd:10, saves:['STR','CON'], spellAb:null,
-    subs:['Champion','Battle Master','Eldritch Knight','Arcane Archer','Cavalier','Samurai',
+    subs:['Champion','Battle Master','Banneret','Eldritch Knight','Arcane Archer','Cavalier','Samurai',
           'Psi Warrior','Rune Knight','Echo Knight','Purple Dragon Knight','Gunslinger']
   },
   Monk: {
@@ -1404,22 +1404,22 @@ const CLASS_DATA = {
     hd:10, saves:['WIS','CHA'], spellAb:'CHA', isHalf:true,
     subs:['Oath of Devotion','Oath of the Ancients','Oath of Vengeance','Oath of Conquest',
           'Oath of Redemption','Oath of Glory','Oath of the Watchers','Oathbreaker',
-          'Oath of Heroism','Oath of the Crown','Oath of Treachery','Oath of the Dragon']
+          'Oath of Heroism','Oath of the Crown','Oath of Treachery','Oath of the Dragon', 'Oath of the nobleGenies']
   },
   Ranger: {
     hd:10, saves:['STR','DEX'], spellAb:'WIS', isHalf:true,
-    subs:['Hunter','Beast Master','Gloom Stalker','Horizon Walker','Monster Slayer',
+    subs:['Hunter','Beast Master','Gloom Stalker','Horizon Walker','Winter Walker','Monster Slayer',
           'Fey Wanderer','Swarmkeeper','Drakewarden','Monster Hunter']
   },
   Rogue: {
     hd:8, saves:['DEX','INT'], spellAb:null,
     subs:['Thief','Assassin','Arcane Trickster','Inquisitive','Mastermind','Scout',
-          'Swashbuckler','Phantom','Soulknife','Revived','Investigator']
+          'Swashbuckler','Phantom','Soulknife','Revived','Investigator', 'Scorn of the three']
   },
   Sorcerer: {
     hd:6, saves:['CON','CHA'], spellAb:'CHA',
     subs:['Draconic Bloodline','Wild Magic','Shadow Magic','Storm Sorcery','Divine Soul',
-          'Aberrant Mind','Clockwork Soul','Lunar Sorcery','Runechild']
+          'Aberrant Mind','Clockwork Soul','Lunar Sorcery','Runechild', 'spellfire sorcery']
   },
   Warlock: {
     hd:8, saves:['WIS','CHA'], spellAb:'CHA', isPact:true,
@@ -1466,6 +1466,7 @@ const SUBCLASS_INFO = {
   'Armorer':                'Armor Model: Thunder Gauntlets or Infiltrator Armor. Your armor becomes a spellcasting focus. Extra Attack built-in.',
   'Artillerist':            'Eldritch Cannon: create a Flamethrower, Force Ballista, or Protector turret. Arcane Firearm boosts cantrip damage.',
   'Battle Smith':           'Battle-Ready: INT for weapon attacks. Steel Defender: loyal mechanical pet that fights for you. Extra Attack at 5th.',
+  'Cartographer':            'Map Mastery: advantage on Navigation checks. Territorial Awareness: bonus action to mark an area, granting allies +1 AC and saves while in it. At higher levels, create Cartographic Traps and Shortcut routes.',
   // Barbarian
   'Path of the Berserker':  'Frenzy: bonus action unarmed strike while raging. Mindless Rage: immune to charm/fright while raging. Retaliation: reaction attack when hit.',
   'Path of the Totem Warrior':'Totem Spirit: Bear (resistance to all dmg), Eagle (no OA), Wolf (allies adv vs enemies near you). Totem bonuses scale.',
@@ -1484,6 +1485,8 @@ const SUBCLASS_INFO = {
   'College of Creation':     'Mote of Potential: extra effects when Bardic die used. Performance of Creation: create large nonmagical object. Animating Performance: animated objects.',
   'College of Spirits':      'Guiding Whispers: spare the dying cantrip. Spiritual Focus: bonus to spell damage. Tales from Beyond: d6 table random spirit powers.',
   'College of Whispers':     'Psychic Blades: extra psychic damage with Bardic die. Words of Terror: frighten targets. Mantle of Whispers: steal identity of slain humanoid.',
+  'College of Tragedy':      'Bonus Proficiency: Performance. Subtle Magic: illusion/enchantment spells ignore resistances. Bewitching Performance: charm on performance. Tragic Inspiration: Bardic die to ability checks.',
+  'College of the Moon':     'Bonus Proficiency: Performance. Moonlit Shroud: illusion spells ignore invisibility. Lunar Inspiration: Bardic die to damage or healing. Unfathomable Inspiration: Bardic die can be used on death saving throws.',
   // Cleric
   'Life Domain':             'Bonus: heavy armor. Disciple of Life: heals restore extra 2+spell level HP. Preserve Life: channel to spread HP among allies.',
   'Light Domain':            'Bonus: light cantrip. Warding Flare: impose disadvantage on attacker. Radiance of the Dawn: channel to deal radiant and dispel darkness.',
@@ -1518,6 +1521,8 @@ const SUBCLASS_INFO = {
   'Rune Knight':             'Rune Carving: Cloud/Fire/Frost/Stone/Storm runes with passive and triggered effects. Giant\'s Might: grow Large, bonus damage. Runic Shield. Great Stature.',
   'Echo Knight':             'Manifest Echo: create duplicate, swap positions, attack through it. Unleash Incarnation: extra attacks through echo. Echo Avatar: long-range scouting.',
   'Purple Dragon Knight':    'Rallying Cry: Second Wind heals allies. Royal Envoy: Persuasion expertise. Inspiring Surge: ally attacks on Action Surge. Bulwark: Indomitable for allies.',
+  'Gunslinger':              'Grit: gain grit points to perform special shots. Gunsmith: create a firearm. Quickdraw: draw as part of attack. Special shots: Deadeye, Thunderclap, etc.',
+  'Banneret':                'Bonus Proficiency. Rallying Cry: Second Wind heals allies. Royal Envoy: Persuasion expertise. Inspiring Surge: ally attacks on Action Surge. Bulwark: Indomitable for allies.',
   // Monk
   'Way of the Open Hand':    'Open Hand Technique: knock prone, push, deny reactions on Flurry hits. Wholeness of Body: self-heal 3× monk level 1/rest. Tranquility. Quivering Palm.',
   'Way of Shadow':           'Shadow Arts: darkness/darkvision/silence/pass without trace. Shadow Step: teleport between shadows. Cloak of Shadows (invisible in dim). Shadow Strike.',
@@ -1540,6 +1545,9 @@ const SUBCLASS_INFO = {
   'Oathbreaker':             'Dark Blessing: CHA to death saves. Control Undead. Aura of Hate: CHA to weapon damage + fiends/undead nearby also gain it. Supernatural Resistance. Dread Lord.',
   'Oath of Heroism':         'Peerless Athlete: adv Athletics/Acrobatics. Inspiring Smite: temp HP on smite. Aura of Alacrity: speed boost. Glorious Defense: deflect attacks with CHA.',
   'Oath of the Crown':       'Champion Challenge: pull enemies into duel. Turn the Tide: heal allies at 0 HP. Divine Allegiance: redirect ally damage to yourself. Unyielding Saint: STR/CON saves.',
+  'Oath of Treachery':       'Betrayer\'s Tongue: proficiency in Deception and disguise kit. Heartbreaker: CHA to damage against charmed targets. Mace of Treachery: magic weapon that can turn on you. Traitor\'s Fate.',
+  'Oath of the Dragon':      'Dragon\'s Breath: exhale elemental damage. Draconic Presence: frighten or charm in 30ft. Dragon\'s Flight: fly speed. Draconic Majesty: advantage on CHA checks vs dragons.',
+  'Oath of the nobleGenies': 'Genie\'s Vessel: summon elemental servant. Elemental Gift: resistance to one damage type, extra damage on smite. Sanctuary Vessel: teleport to vessel as reaction. Genie\'s Wrath: extra damage and push on smite.',
   // Ranger
   'Hunter':                  'Hunter\'s Prey: Colossus Slayer / Giant Killer / Horde Breaker. Defensive Tactics: Escape the Horde / Multiattack Defense / Steel Will. Multiattack options.',
   'Beast Master':            'Ranger\'s Companion: bond with a beast. Exceptional Training: beast uses your bonus action, can take non-attack actions. Bestial Fury: beast makes 2 attacks.',
@@ -1549,6 +1557,8 @@ const SUBCLASS_INFO = {
   'Fey Wanderer':            'Dreadful Strikes: psychic damage. Otherworldly Glamour: CHA bonus to checks, extra language. Beguiling Twist: redirect charm/fright. Fey Reinforcements.',
   'Swarmkeeper':             'Gathered Swarm: bonus attack move/damage. Writhing Tide: fly speed. Mighty Swarm: knock prone/restrain. Swarming Dispersal: escape with temp HP.',
   'Drakewarden':             'Drake Companion: bonded drake fights with you. Bond of Fang and Scale: share drake\'s resistances, ride it. Drake\'s Breath weapon. Perfected Bond: drake grows Large.',
+  'Monster Hunter':          'Hunter\'s Sense: sense vulnerabilities/immunities. Slayer\'s Prey: bonus damage vs one target. Supernatural Defense: bonus to saves/grapple vs prey. Slayer\'s Counter.',
+  'winter walker':            'Ice Walk: move across ice without penalty, ignore difficult terrain from ice/snow. Arctic Camouflage: advantage on Stealth in cold environments. Snow Mastery: create difficult terrain with snow. Subzero Shroud: resistance to cold, immunity to snow/ice.',
   // Rogue
   'Thief':                   'Fast Hands: bonus action Sleight of Hand/thieves tools/object. Second-Story Work: climb speed, running jump bonus. Supreme Sneak: adv Stealth at half speed. Thief\'s Reflexes.',
   'Assassin':                'Bonus Proficiencies: disguise kit, poisoner\'s kit. Assassinate: adv vs creatures that haven\'t acted + auto-crit on surprised targets. Infiltration Expertise. Impostor.',
@@ -1559,15 +1569,17 @@ const SUBCLASS_INFO = {
   'Swashbuckler':            'Fancy Footwork: no OA after attacking. Rakish Audacity: add CHA to initiative; Sneak Attack without ally if 1v1. Panache. Elegant Maneuver. Master Duelist.',
   'Phantom':                 'Whispers of the Dead: gain skill/tool prof from nearby dead. Wails from the Grave: extra Sneak Attack damage to second target. Tokens of the Departed. Ghost Walk.',
   'Soulknife':               'Psionic Power: Psionic Whispers, Psychic Blades (1d6 psychic finesse thrown), Psychic Veil: invisibility. Rend Mind: stun target on sneak attack.',
+  'scorn of the three':         'Bonus Proficiency: Intimidation. Mark of the Blade: teleport to marked target, add INT to damage. Mark of the Shadow: teleport between shadows. Mark of the Whisper: invisibility and telepathy.',
   // Sorcerer
   'Draconic Bloodline':      'Dragon Ancestor: choose dragon type for damage resistance and language. Draconic Resilience: +1 HP/level, AC 13+DEX without armor. Elemental Affinity: add CHA to damage. Dragon Wings.',
   'Wild Magic':              'Wild Magic Surge: 1-in-20 random effects after casting. Tides of Chaos: advantage 1/rest (recharges on surge). Bend Luck: spend 2 points to adjust any roll.',
   'Shadow Magic':            'Eyes of the Dark: darkness for 1 point. Strength of the Grave: CON save to stay at 1 HP 1/day. Hound of Ill Omen: summon shadowy hound. Shadow Walk.',
-  'Storm Sorcery':           'Wind Speaker: Primordial language. Tempestuous Magic: 10ft fly as bonus after cantrip/spell. Heart of the Storm: resistance + area damage when casting lightning/thunder.',
   'Divine Soul':             'Divine Magic: access to cleric spell list. Favored by the Gods: +2d4 to saves/attacks 1/rest. Empowered Healing: reroll healing dice. Otherworldly Wings.',
   'Aberrant Mind':           'Telepathic Speech: communicate telepathically. Psionic Spells: bonus spells (detect thoughts, etc.). Revelation in Flesh: spend points for wings/swim/see invisible.',
   'Clockwork Soul':          'Clockwork Magic: bonus restoration/protection spells. Restore Balance: cancel adv/disadv. Bulwark of Law: absorb d8s = Sorcery points. Trance of Order.',
   'Lunar Sorcery':           'Moon Fire: sacred flame hits two. Lunar Embodiment: bonus spells per phase. Waxing/Full/Waning moon powers. Lunar Phenomenon: zone of power.',
+  'Runechild':              'Rune Magic: inscribe runes for various effects. Rune Carver: use runes as spellcasting focus, extra runes. Runic Shield: reaction shield. Rune Mastery: extra effects on runes.',
+  'spellfire sorcery':       'Spellfire Magic: heal with spell slots, damage with spell slots. Spellfire Adept: gain spellfire magic at 1st level, extra damage on spell attacks. Spellfire Master: regain spell slot on kill, extra damage on spell attacks.',
   // Warlock
   'The Archfey':             'Fey Presence: charm or frighten nearby. Misty Escape: reaction to teleport and become invisible. Beguiling Defenses: immune to charm, reflect it. Dark Delirium.',
   'The Fiend':               'Dark One\'s Blessing: temp HP on kills (= CHA mod + level). Dark One\'s Own Luck: +1d10 to ability check/save 1/rest. Fiendish Resilience: damage resistance choice.',
@@ -1594,7 +1606,6 @@ const SUBCLASS_INFO = {
   'Order of Scribes':        'Awakened Spellbook: use book as focus, change damage type of spells. Manifest Mind: project spellcasting focus 300ft. Master Scrivener: create 1st/2nd level spell scrolls free.',
   'School of Artifice':      'Bonus tool proficiency. Arcane Armaments: attune to more items. Craft Magical Item: create magical items using spell slots. Artificer\'s Magic: INT for magic item saves.',
   // ── HOMEBREW / POPULAR UNOFFICIAL ──
-  'Cartographer':            '(Homebrew) Map Mastery: advantage on Navigation checks. Territorial Awareness: bonus action to mark an area, granting allies +1 AC and saves while in it. At higher levels, create Cartographic Traps and Shortcut routes.',
   'Path of the Juggernaut':  '(Homebrew) Unstoppable: cannot be knocked prone while raging. Pulverizing Blow: knock enemies back 15ft on hit. Overwhelming Cleave: attack multiple creatures in a line. Juggernaut\'s Rush: charge through enemies.',
   'Path of the Dragon':      '(Homebrew) Draconic Rage: breath weapon during rage, choose damage type. Dragon Hide: natural AC. Frightful Presence: frighten enemies on rage entry. Wings at 14th level.',
   'College of Tragedy':      '(Homebrew) Poetry in Misery: regain Bardic Inspiration when ally fails a check. Sorrowful Fate: impose disadvantage on a death save. Tale of Hubris: exploit enemy crits. Inevitable Demise: escalating damage on cursed targets.',
@@ -4317,8 +4328,14 @@ function updateSubclassInfo() {
   if (!el) return;
   if (!sub) { el.innerHTML = ''; return; }
   const info = SUBCLASS_INFO[sub];
+  const lvl = parseInt(document.getElementById('c-level').value) || 1;
+  const cls = document.getElementById('c-class').value;
+  const subMinLvl = getSubclassMinimumLevel(cls);
+  const isUnlocked = lvl >= subMinLvl;
   el.innerHTML = info ? `<div style="background:var(--dark3);border:1px solid rgba(201,168,76,.2);padding:8px 10px;border-radius:2px;margin-top:-10px;margin-bottom:12px;font-size:.84rem;color:var(--parch2)">
-    <strong style="color:var(--gold2);font-family:'Cinzel',serif;font-size:.72rem">${sub}</strong><br>${info}</div>` : '';
+    <strong style="color:var(--gold2);font-family:'Cinzel',serif;font-size:.72rem">${sub}</strong><br>${info}
+    ${!isUnlocked ? `<div style="margin-top:8px;padding:6px 10px;background:rgba(240,100,100,.12);border:1px solid rgba(240,100,100,.2);color:#f6d1d1;font-size:.82rem">This subclass is unlocked at level ${subMinLvl}.</div>` : ''}
+  </div>` : '';
   updateBuildSummary();
 }
 
@@ -5288,17 +5305,27 @@ function renderFeaturesPanel(c) {
     } else if (!label) {
       html += '<span class="muted">No features for selected class/level.</span>';
     }
-    if (subName && hasSubFeats) {
+    const visibleSubFeatures = getSubclassFeatureEntries(subName, maxLvl);
+    const hiddenSubFeatureCount = Object.keys(subFeatures).length - visibleSubFeatures.length;
+    if (subName && visibleSubFeatures.length) {
       html += `<div class="feature-item" style="border-left:3px solid var(--gold2);padding:6px 8px;margin-top:8px;background:rgba(201,168,76,.05)">
         <div style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--gold2);margin-bottom:6px">⚜ ${subName}</div>`;
-      html += Object.entries(subFeatures).map(([name, desc]) =>
+      html += visibleSubFeatures.map(([name, desc]) =>
         `<div style="margin-bottom:5px">
           <span style="color:var(--gold2);font-size:.82rem;font-weight:600">${name}:</span>
-          <span style="color:var(--parch2);font-size:.8rem"> ${desc}</span>
+          <span style="color:var(--parch2);font-size:.8rem"> ${getSubclassFeatureDesc(desc)}</span>
         </div>`
       ).join('');
+      if (hiddenSubFeatureCount > 0) {
+        html += `<div style="margin-top:6px;font-size:.78rem;color:rgba(240,240,240,.75)">${hiddenSubFeatureCount} more feature(s) unlock at higher levels.</div>`;
+      }
       html += `</div>`;
-    } else if (subName && SUBCLASS_INFO[subName] && !hasSubFeats) {
+    } else if (subName && subFeatures && Object.keys(subFeatures).length) {
+      html += `<div class="feature-item" style="border-left:2px solid var(--gold2);padding-left:8px;margin-top:8px">
+        <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold2);margin-bottom:2px">⚜ ${subName}</div>
+        <div style="color:var(--parch2);font-size:.82rem">No subclass features are available at this level.</div>
+      </div>`;
+    } else if (subName && SUBCLASS_INFO[subName]) {
       html += `<div class="feature-item" style="border-left:2px solid var(--gold2);padding-left:8px;margin-top:8px">
         <div style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold2);margin-bottom:2px">⚜ ${subName}</div>
         <div style="color:var(--parch2);font-size:.82rem">${SUBCLASS_INFO[subName]}</div>
@@ -8608,14 +8635,21 @@ function renderChoicesPanel() {
 
   // ── SUBCLASS FEATURES ─────────────────────────────────────────────────────
   if (sub) {
-    const subFeatures = SUBCLASS_FEATURES[sub];
-    if (subFeatures) {
+    const visibleSubFeatures = getSubclassFeatureEntries(sub, lvl);
+    const allSubFeatures = SUBCLASS_FEATURES[sub] || {};
+    if (visibleSubFeatures.length) {
       html += `<div class="section-h">✨ ${sub} Features</div>`;
       html += `<div style="font-size:.82rem;line-height:1.6;color:rgba(240,230,200,.75)">`;
-      for (const [feat, desc] of Object.entries(subFeatures)) {
-        html += `<div style="margin-bottom:6px"><span style="font-family:'Cinzel',serif;color:var(--gold);font-size:.85rem">${feat}</span><br><span class="muted">${desc}</span></div>`;
+      for (const [feat, desc] of visibleSubFeatures) {
+        html += `<div style="margin-bottom:6px"><span style="font-family:'Cinzel',serif;color:var(--gold);font-size:.85rem">${feat}</span><br><span class="muted">${getSubclassFeatureDesc(desc)}</span></div>`;
+      }
+      if (Object.keys(allSubFeatures).length > visibleSubFeatures.length) {
+        html += `<div style="margin-top:8px;font-size:.78rem;color:rgba(255,215,180,.85)">${Object.keys(allSubFeatures).length - visibleSubFeatures.length} feature(s) unlock at higher levels.</div>`;
       }
       html += '</div>';
+    } else if (Object.keys(allSubFeatures).length) {
+      html += `<div class="section-h">✨ ${sub} Features</div>`;
+      html += `<div style="font-size:.82rem;line-height:1.6;color:rgba(240,230,200,.75)">No subclass features are available at this level.</div>`;
     }
   }
 
@@ -10578,6 +10612,26 @@ function compBadge(text, color) {
   return `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:.68rem;font-family:'Cinzel',serif;background:${color||'rgba(201,168,76,.15)'};border:1px solid rgba(201,168,76,.3);color:var(--gold2);margin:1px 2px">${text}</span>`;
 }
 
+function getSubclassFeatureDesc(featureData) {
+  return featureData && typeof featureData === 'object' ? featureData.desc : featureData;
+}
+
+function getSubclassFeatureEntries(subName, lvl) {
+  const features = SUBCLASS_FEATURES[subName] || {};
+  return Object.entries(features).filter(([name, data]) => {
+    const unlock = data && typeof data === 'object' ? data.level : undefined;
+    return unlock === undefined || lvl >= unlock;
+  });
+}
+
+function getSubclassMinimumLevel(clsName) {
+  const feats = CLASS_FEATURES[clsName] || {};
+  for (let i = 1; i <= 20; i++) {
+    if ((feats[i] || []).some(f => String(f).toLowerCase().includes('subclass'))) return i;
+  }
+  return 1;
+}
+
 function compStatLine(label, value) {
   return `<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(201,168,76,.07)">
     <span style="font-family:'Cinzel',serif;font-size:.72rem;color:var(--gold2);min-width:130px;flex-shrink:0">${label}</span>
@@ -10659,8 +10713,11 @@ function renderCompSubclasses(lvl, q) {
   if (!filtered.length) return noResults(q);
   return filtered.map(({cls, sub}) => {
     const info = SUBCLASS_INFO[sub] || 'No description available.';
-    const features = SUBCLASS_FEATURES[sub] || {};
+    const allFeatures = SUBCLASS_FEATURES[sub] || {};
+    const features = getSubclassFeatureEntries(sub, lvl);
     const choices = SUBCLASS_CHOICES[sub] || {};
+    const subclassMinLvl = getSubclassMinimumLevel(cls);
+    const isAvailable = lvl >= subclassMinLvl;
     const summary = `
       <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
         <div style="flex:1">
@@ -10669,9 +10726,11 @@ function renderCompSubclasses(lvl, q) {
           <div style="font-size:.82rem;color:var(--parch2);margin-top:4px;line-height:1.5">${info.split('.')[0]}.</div>
         </div>
       </div>`;
-    const featHtml = Object.entries(features).map(([feat, desc]) =>
-      `<div style="margin-bottom:7px"><span style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--gold2)">${feat}:</span> <span style="font-size:.82rem;color:var(--parch2)">${desc}</span></div>`
+    const featHtml = features.map(([feat, desc]) =>
+      `<div style="margin-bottom:7px"><span style="font-family:'Cinzel',serif;font-size:.8rem;color:var(--gold2)">${feat}:</span> <span style="font-size:.82rem;color:var(--parch2)">${getSubclassFeatureDesc(desc)}</span></div>`
     ).join('');
+    const availableNote = !isAvailable ? `<div style="margin:0 0 10px;padding:10px;border-left:3px solid rgba(255,140,140,.8);background:rgba(255,120,120,.08);color:#f0d0d0;font-size:.84rem">This subclass unlocks at level ${subclassMinLvl} for ${cls}.</div>` : '';
+    const hiddenCount = Math.max(0, Object.keys(allFeatures).length - features.length);
     const choiceHtml = Object.entries(choices).map(([key, def]) => {
       if (def.type === 'display') return `<div style="font-size:.82rem;color:var(--parch2);margin-bottom:6px"><strong style="color:var(--gold2)">${def.label}:</strong> ${def.note||''}</div>`;
       if (!def.options) return '';
@@ -10683,7 +10742,10 @@ function renderCompSubclasses(lvl, q) {
     const detail = `
       <div style="margin-top:12px">
         <div style="font-size:.85rem;color:var(--parch2);line-height:1.6;margin-bottom:10px">${info}</div>
-        ${featHtml ? compSection('Subclass Features', featHtml) : ''}
+        ${availableNote}
+        ${isAvailable && featHtml ? compSection('Subclass Features', featHtml) : ''}
+        ${isAvailable && !featHtml ? `<div style="font-size:.82rem;color:var(--parch2);margin-bottom:10px">No subclass features are defined for this level yet.</div>` : ''}
+        ${hiddenCount ? `<div style="font-size:.8rem;color:rgba(240,240,240,.75);margin-bottom:10px">${hiddenCount} feature(s) unlock at higher levels.</div>` : ''}
         ${choiceHtml ? compSection('Available Choices', choiceHtml) : ''}
       </div>`;
     return compCard('sub-' + sub.replace(/[\s']/g,'_'), summary, detail);

@@ -1393,6 +1393,10 @@ const CLASS_DATA = {
     subs:['Champion','Battle Master','Banneret','Eldritch Knight','Arcane Archer','Cavalier','Samurai',
           'Psi Warrior','Rune Knight','Echo Knight','Purple Dragon Knight','Gunslinger']
   },
+  Healer: {
+    hd:8, saves:['WIS','CON'], spellAb:'WIS', isHalf:true,
+    subs:['Vow of the Martyr','Vow of the Augmenter','Vow of the Protector','Vow of the Sipher']
+  },
   Monk: {
     hd:8, saves:['STR','DEX'], spellAb:null,
     subs:['Way of the Open Hand','Way of Shadow','Way of the Four Elements','Way of the Sun Soul',
@@ -1501,6 +1505,11 @@ const SUBCLASS_INFO = {
   'Peace Domain':            'Implement of Peace: proficiency in Insight/Performance/Persuasion. Emboldening Bond: bonded allies can add d4 to checks. Balm of Peace.',
   'Twilight Domain':         'Bonus: heavy armor, martial weapons. Eyes of Night: darkvision 300ft, share with allies. Twilight Sanctuary: aura of protection (temp HP or end charm/fear).',
   'Arcana Domain':           'Arcane Initiate: two wizard cantrips. Spell Breaker: dispel lower-level spells when healing. Arcane Mastery: add high-level wizard spells to list.',
+  // Healer
+  'Vow of the Martyr':       'Martyr’s vow: sacrificial healing that lets you protect allies by absorbing damage into yourself.',
+  'Vow of the Augmenter':    'Augmenter’s vow: healing magic that empowers allies and reinforces their next actions.',
+  'Vow of the Protector':    'Protector’s vow: defensive support magic that reduces harm and guards allies in danger.',
+  'Vow of the Sipher':       'Sipher’s vow: sigils and runes that turn healing into lasting protection and resilience.',
   // Druid
   'Circle of the Land':      'Bonus Cantrip. Natural Recovery: recover spell slots on short rest. Land bonus spells by terrain type. Nature\'s Ward: immune charm/fright by fey/elementals.',
   'Circle of the Moon':      'Combat Wild Shape: wildshape as bonus action, expend slots for HP. Elemental Wild Shape: become air/earth/fire/water elemental. Enhanced wild shape CR.',
@@ -2932,6 +2941,7 @@ const CLASS_ARMOR_PROFS = {
   Cleric:     {light:true, medium:true, heavy:false, shield:true},
   Druid:      {light:true, medium:true, heavy:false, shield:true},
   Fighter:    {light:true, medium:true, heavy:true,  shield:true},
+  Healer:     {light:true, medium:true, heavy:false, shield:true},
   Monk:       {light:false,medium:false,heavy:false, shield:false},
   Paladin:    {light:true, medium:true, heavy:true,  shield:true},
   Ranger:     {light:true, medium:true, heavy:false, shield:true},
@@ -3065,7 +3075,7 @@ const WARLOCK_SLOT_LEVEL = {1:1,2:1,3:2,4:2,5:3,6:3,7:4,8:4,9:5,10:5,11:5,12:5,1
 const ASI_LEVELS = {
   Artificer:[4,8,12,16,19], Barbarian:[4,8,12,16,19], Bard:[4,8,12,16,19],
   Cleric:[4,8,12,16,19],    Druid:[4,8,12,16,19],     Fighter:[4,6,8,12,14,16,19],
-  Monk:[4,8,12,16,19],      Paladin:[4,8,12,16,19],   Ranger:[4,8,12,16,19],
+  Healer:[4,8,12,16,19],    Monk:[4,8,12,16,19],      Paladin:[4,8,12,16,19],   Ranger:[4,8,12,16,19],
   Rogue:[4,8,10,12,16,18,19],Sorcerer:[4,8,12,16,19], Warlock:[4,8,12,16,19],
   Wizard:[4,8,12,16,19],
   // ── HOMEBREW CLASSES ──────────────────────────────────────────────────
@@ -3120,6 +3130,28 @@ const CLASS_FEATURES = {
     18:['Archetype Feature'],
     19:['ASI'],
     20:['Extra Attack (attack four times per Attack action)']
+  },
+  Healer: {
+    1:['Spellcasting (WIS-based; prepare WIS mod + Healer level spells)','Healing Arts (your magic can stabilize the dying and restore allies with touch)','Healer\'s Kit (you can use your kit to stabilize a creature or restore 1d6 + 4 + Healer level HP once per creature per rest)'],
+    2:['Restorative Focus (healing spells gain a small bonus when used on allies in danger)','Channeling Vitality (bonus action: grant a creature temporary HP or strengthen their next save)'],
+    3:['Healer\'s Tradition (subclass)'],
+    4:['ASI'],
+    5:['Shared Recovery (healing spells can also restore nearby allies)','Healer\'s Presence (you can support a companion as a bonus action)'],
+    6:['Healer\'s Tradition Feature'],
+    7:['Sustained Mercy (healing magic lasts longer and can be applied more consistently)'],
+    8:['ASI'],
+    9:['Combat Medic (you can use your reaction to aid a creature after it is hit)'],
+    10:['Healer\'s Tradition Feature'],
+    11:['Overflowing Vitality (healing magic can grant extra temporary HP)'],
+    12:['ASI'],
+    13:['Resistant Care (end one condition or gain bonus protection against poison or disease)'],
+    14:['Healer\'s Tradition Feature'],
+    15:['Mass Recovery (your support magic reaches more allies at once)'],
+    16:['ASI'],
+    17:['Master of Mercy (your support magic can turn the tide of battle)'],
+    18:['Healer\'s Tradition Feature'],
+    19:['ASI'],
+    20:['Miraculous Recovery (once per long rest, your healing magic can fully restore a companion from severe harm)']
   },
   Rogue: {
     1:['Expertise (double proficiency bonus on 2 chosen skills or thieves\' tools)','Sneak Attack 1d6 (extra damage when you have advantage or ally adjacent to target)','Thieves\' Cant (secret language of the underworld)'],
@@ -7738,6 +7770,16 @@ const CLASS_CHOICES = {
       ]
     }
   },
+  Healer: {
+    healingTradition: {
+      label: 'Healing Tradition', unlocksAt: 1, type: 'single',
+      options: [
+        {v:'Restorative Touch', d:'Your touch heals more and stabilizes creatures faster.'},
+        {v:'Protective Embrace', d:'Your healing magic also grants temporary HP and a brief defensive ward.'},
+        {v:'Benevolent Surge', d:'Your support magic boosts allies\' attacks and saving throws.'},
+      ]
+    }
+  },
   Paladin: {
     fightingStyle: {
       label: 'Fighting Style', unlocksAt: 2, type: 'single',
@@ -8062,34 +8104,38 @@ const SUBCLASS_CHOICES = {
   
   //──Healer subclasses
   'Vow of the Martyr': {
-    divineMagic: {
-      label: 'Divine Magic', unlocksAt: 3, type: 'multi',
+    martyrFocus: {
+      label: 'Martyr’s Focus', unlocksAt: 3, type: 'single',
       options: [
-        {v:'Cleric Spell List', d:'You can choose spells from the Cleric spell list in addition to the Sorcerer spell list.'}
+        {v:'Sacrificial Shield', d:'When you heal an ally, you can take the damage instead.'},
+        {v:'Overflowing Mercy', d:'Your healing spells also grant temporary HP to nearby allies.'}
       ]
     }
   },
   'Vow of the Augmenter': {
-    favoredSoulMagic: {
-      label: 'Favored Soul Magic', unlocksAt: 3, type: 'multi',
+    augmentingMagic: {
+      label: 'Augmenting Magic', unlocksAt: 3, type: 'single',
       options: [
-        {v:'Cleric Spell List', d:'You can choose spells from the Cleric spell list in addition to the Sorcerer spell list.'}
+        {v:'Supportive Surge', d:'Your healing spells grant the next ally attack or save a small bonus.'},
+        {v:'Staff of Renewal', d:'You can imbue a weapon or tool with healing energy.'}
       ]
     }
   },
   'Vow of the Protector': {
-    divineMagic: {
-      label: 'Divine Magic', unlocksAt: 3, type: 'multi',
+    protectiveWard: {
+      label: 'Protective Ward', unlocksAt: 3, type: 'single',
       options: [
-        {v:'Cleric Spell List', d:'You can choose spells from the Cleric spell list in addition to the Sorcerer spell list.'}
+        {v:'Shielding Aura', d:'You create a soothing aura that reduces incoming damage to allies.'},
+        {v:'Guardian’s Step', d:'You can move to protect an ally as a reaction.'}
       ]
     }
   },
   'Vow of the Sipher': {
-    divineMagic: {
-      label: 'Divine Magic', unlocksAt: 3, type: 'multi',
+    sigilFocus: {
+      label: 'Sigil Focus', unlocksAt: 3, type: 'single',
       options: [
-        {v:'Cleric Spell List', d:'You can choose spells from the Cleric spell list in addition to the Sorcerer spell list.'}
+        {v:'Runic Recovery', d:'Your healing magic leaves a faint rune that bolsters allies after the fight.'},
+        {v:'Scribed Grace', d:'You can inscribe protective sigils that improve saving throws.'}
       ]
     }
   },
@@ -8666,7 +8712,7 @@ const SPELL_KNOWN_LIMITS = {
   Warlock:   { cantrips:[0,2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4], spells:[0,2,3,4,5,6,7,8,9,10,10,11,11,12,12,13,13,14,14,15,15] },
   // Prepared casters (Cleric/Druid/Paladin/Wizard): prepared = ability mod + level (not "known"), no hard list
   // Full prepared: mark as 'prepared'
-  Cleric:    'prepared', Druid: 'prepared', Paladin: 'prepared', Wizard: 'prepared',
+  Cleric:    'prepared', Druid: 'prepared', Paladin: 'prepared', Wizard: 'prepared', Healer: 'prepared',
   Artificer: 'prepared', Fighter: null, Rogue: null, Barbarian: null, Monk: null,
 };
 
@@ -10216,7 +10262,7 @@ const SPELL_SLOT_TABLE = {
 };
 const CLASS_CASTER_TYPE = {
   Artificer:'half', Bard:'full', Cleric:'full', Druid:'full',
-  Fighter:null,   Monk:null,   Paladin:'half', Ranger:'half',
+  Fighter:null,   Healer:'half', Monk:null,   Paladin:'half', Ranger:'half',
   Rogue:null,     Sorcerer:'full', Warlock:'pact', Wizard:'full',
   Barbarian:null,
 };

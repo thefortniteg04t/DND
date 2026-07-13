@@ -839,8 +839,10 @@ textarea { resize: vertical; min-height: 80px; }
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <select id="spell-filter-class" onchange="filterSpellDB()" style="margin:0;flex:1;min-width:120px">
         <option value="">All Classes</option>
-        <option>Artificer</option><option>Bard</option><option>Cleric</option><option>Druid</option>
-        <option>Paladin</option><option>Ranger</option><option>Sorcerer</option><option>Warlock</option><option>Wizard</option>
+        <option>Artificer</option><option>Barbarian</option><option>Bard</option><option>Cleric</option>
+        <option>Druid</option><option>Fighter</option><option>Healer</option><option>Monk</option>
+        <option>Paladin</option><option>Ranger</option><option>Rogue</option><option>Sorcerer</option>
+        <option>Warlock</option><option>Wizard</option>
       </select>
       <select id="spell-filter-level" onchange="filterSpellDB()" style="margin:0;width:90px">
         <option value="">All Levels</option>
@@ -962,8 +964,9 @@ textarea { resize: vertical; min-height: 80px; }
             <option value="">— Select Class —</option>
             <option>Artificer</option><option>Barbarian</option><option>Bard</option>
             <option>Cleric</option><option>Druid</option><option>Fighter</option>
-            <option>Monk</option><option>Paladin</option><option>Ranger</option>
-            <option>Rogue</option><option>Sorcerer</option><option>Warlock</option><option>Wizard</option>
+            <option>Healer</option><option>Monk</option><option>Paladin</option>
+            <option>Ranger</option><option>Rogue</option><option>Sorcerer</option>
+            <option>Warlock</option><option>Wizard</option>
             <optgroup label="Homebrew Classes">
               <option>Osteomancer</option><option>Warden</option><option>Plaguebearer</option>
               <option>Bloodhunter</option><option>Psion</option>
@@ -4751,7 +4754,8 @@ function buildSpellSlotUI(c) {
     return;
   }
 
-  const slotsArr = SPELL_SLOTS[Math.min(lvl,20)] || [];
+  const effectiveLevel = cd.isHalf ? Math.floor(lvl / 2) : lvl;
+  const slotsArr = (effectiveLevel > 0) ? (SPELL_SLOTS[Math.min(effectiveLevel,20)] || []) : [];
   if (!slotsArr.length) { el.innerHTML = '<span class="muted">No spell slots at this level.</span>'; return; }
   if (!Object.keys(spellSlots).length && c && c.spellSlots) Object.assign(spellSlots, c.spellSlots);
   slotsArr.forEach((n,i) => { if (!spellSlots[i+1]) spellSlots[i+1] = {total:n, used:0}; });

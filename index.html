@@ -8720,6 +8720,19 @@ const SPELL_KNOWN_LIMITS = {
   Artificer: 'prepared', Fighter: null, Rogue: null, Barbarian: null, Monk: null,
 };
 
+const HEALER_PREPARED_SPELLS = [0,4,5,6,7,9,10,11,12,14,15,16,16,17,17,18,18,19,20,21,22];
+
+function getPreparedSpellLimit(cls, lvl, abilityMod) {
+  if (cls === 'Healer') {
+    const base = HEALER_PREPARED_SPELLS[Math.min(Math.max(1, parseInt(lvl) || 1), 20)] || 0;
+    return Math.max(1, base + (abilityMod || 0));
+  }
+  const cd = CLASS_DATA[cls];
+  const isHalf = cd?.isHalf;
+  const effLvl = isHalf ? Math.floor((parseInt(lvl) || 1) / 2) : (parseInt(lvl) || 1);
+  return Math.max(1, (abilityMod || 0) + effLvl);
+}
+
 // Module-level storage for choices
 let charChoices = {};
 
@@ -8807,11 +8820,9 @@ function renderChoicesPanel() {
       const ab = CLASS_DATA[cls]?.spellAb;
       const scores = getScores ? getScores() : {};
       const mod = ab ? Math.floor(((parseInt(scores[ab])||10)-10)/2) : 0;
-      const isHalf = CLASS_DATA[cls]?.isHalf;
-      const effLvl = isHalf ? Math.floor(lvl/2) : lvl;
-      const prepared = mod + effLvl;
+      const prepared = getPreparedSpellLimit(cls, lvl, mod);
       html += `<div class="section-h">📖 Prepared Spells</div>`;
-      html += `<div style="font-size:.84rem;color:rgba(240,230,200,.8)">Prepared spells: <span style="color:var(--gold)">${Math.max(1,prepared)}</span> (${ab} mod ${mod>=0?'+':''}${mod} + ${isHalf?'half-':''}level ${effLvl})</div>`;
+      html += `<div style="font-size:.84rem;color:rgba(240,230,200,.8)">Prepared spells: <span style="color:var(--gold)">${prepared}</span> (${cls === 'Healer' ? 'Healer progression' : `${ab} mod ${mod>=0?'+':''}${mod} + ${CLASS_DATA[cls]?.isHalf?'half-':''}level ${CLASS_DATA[cls]?.isHalf ? Math.floor(lvl/2) : lvl}`})</div>`;
     }
   }
 
